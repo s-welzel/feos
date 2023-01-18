@@ -26,6 +26,7 @@ macro_rules! log_result {
     }
 }
 
+pub mod equation_of_state2;
 pub mod cubic;
 mod density_iteration;
 mod equation_of_state;

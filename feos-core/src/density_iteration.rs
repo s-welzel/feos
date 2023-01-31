@@ -1,17 +1,17 @@
-use crate::equation_of_state::EquationOfState;
+use crate::equation_of_state::{EquationOfState, IdealGas, Residual};
 use crate::errors::{EosError, EosResult};
 use crate::state::State;
 use crate::EosUnit;
 use quantity::si::{SIArray1, SINumber, SIUnit};
 use std::sync::Arc;
 
-pub fn density_iteration<E: EquationOfState>(
-    eos: &Arc<E>,
+pub fn density_iteration<I: IdealGas, R: Residual>(
+    eos: &Arc<EquationOfState<I, R>>,
     temperature: SINumber,
     pressure: SINumber,
     moles: &SIArray1,
     initial_density: SINumber,
-) -> EosResult<State<E>> {
+) -> EosResult<State<I, R>> {
     let maxdensity = eos.max_density(Some(moles))?;
     let (abstol, reltol) = (1e-12, 1e-14);
     let n = moles.sum();
@@ -144,8 +144,8 @@ pub fn density_iteration<E: EquationOfState>(
     }
 }
 
-fn pressure_spinodal<E: EquationOfState>(
-    eos: &Arc<E>,
+fn pressure_spinodal<I: IdealGas, R: Residual>(
+    eos: &Arc<EquationOfState<I, R>>,
     temperature: SINumber,
     rho_init: SINumber,
     moles: &SIArray1,

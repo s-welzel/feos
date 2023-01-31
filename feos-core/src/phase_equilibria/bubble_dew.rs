@@ -1,12 +1,12 @@
 use super::{PhaseEquilibrium, SolverOptions, Verbosity};
-use crate::equation_of_state::EquationOfState;
+use crate::equation_of_state::{EquationOfState, Residual};
 use crate::errors::{EosError, EosResult};
 use crate::state::{
     Contributions,
     DensityInitialization::{InitialDensity, Liquid, Vapor},
     State, StateBuilder, TPSpec,
 };
-use crate::EosUnit;
+use crate::{EosUnit, IdealGas};
 use ndarray::*;
 use num_dual::linalg::{norm, LU};
 use quantity::si::{SIArray1, SINumber, SIUnit};
@@ -55,11 +55,11 @@ where
 }
 
 /// # Bubble and dew point calculations
-impl<E: EquationOfState> PhaseEquilibrium<E, 2> {
+impl<I: IdealGas, R: Residual> PhaseEquilibrium<I, R, 2> {
     /// Calculate a phase equilibrium for a given temperature
     /// or pressure and composition of the liquid phase.
     pub fn bubble_point(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         temperature_or_pressure: SINumber,
         liquid_molefracs: &Array1<f64>,
         tp_init: Option<SINumber>,
@@ -83,7 +83,7 @@ impl<E: EquationOfState> PhaseEquilibrium<E, 2> {
     /// Calculate a phase equilibrium for a given temperature
     /// or pressure and composition of the vapor phase.
     pub fn dew_point(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         temperature_or_pressure: SINumber,
         vapor_molefracs: &Array1<f64>,
         tp_init: Option<SINumber>,
@@ -105,7 +105,7 @@ impl<E: EquationOfState> PhaseEquilibrium<E, 2> {
     }
 
     pub(super) fn bubble_dew_point(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         tp_spec: TPSpec,
         tp_init: Option<SINumber>,
         molefracs_spec: &Array1<f64>,
@@ -181,7 +181,7 @@ impl<E: EquationOfState> PhaseEquilibrium<E, 2> {
     }
 
     fn iterate_bubble_dew(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         tp_spec: TPSpec,
         tp_init: SINumber,
         molefracs_spec: &Array1<f64>,
@@ -202,7 +202,7 @@ impl<E: EquationOfState> PhaseEquilibrium<E, 2> {
     }
 
     fn starting_pressure_ideal_gas(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         temperature: SINumber,
         molefracs_spec: &Array1<f64>,
         bubble: bool,
@@ -218,7 +218,7 @@ impl<E: EquationOfState> PhaseEquilibrium<E, 2> {
     }
 
     pub(super) fn starting_pressure_ideal_gas_bubble(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         temperature: SINumber,
         liquid_molefracs: &Array1<f64>,
     ) -> EosResult<(SINumber, Array1<f64>)> {
@@ -237,7 +237,7 @@ impl<E: EquationOfState> PhaseEquilibrium<E, 2> {
     }
 
     fn starting_pressure_ideal_gas_dew(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         temperature: SINumber,
         vapor_molefracs: &Array1<f64>,
     ) -> EosResult<(SINumber, Array1<f64>)>
@@ -272,7 +272,7 @@ impl<E: EquationOfState> PhaseEquilibrium<E, 2> {
     }
 
     pub(super) fn starting_pressure_spinodal(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         temperature: SINumber,
         molefracs: &Array1<f64>,
     ) -> EosResult<SINumber>
@@ -287,13 +287,13 @@ impl<E: EquationOfState> PhaseEquilibrium<E, 2> {
     }
 }
 
-fn starting_x2_bubble<E: EquationOfState>(
-    eos: &Arc<E>,
+fn starting_x2_bubble<I: IdealGas, R: Residual>(
+    eos: &Arc<EquationOfState<I, R>>,
     temperature: SINumber,
     pressure: SINumber,
     liquid_molefracs: &Array1<f64>,
     vapor_molefracs: Option<&Array1<f64>>,
-) -> EosResult<[State<E>; 2]> {
+) -> EosResult<[State<I, R>; 2]> {
     let liquid_state = State::new_npt(
         eos,
         temperature,
@@ -315,13 +315,13 @@ fn starting_x2_bubble<E: EquationOfState>(
     Ok([liquid_state, vapor_state])
 }
 
-fn starting_x2_dew<E: EquationOfState>(
-    eos: &Arc<E>,
+fn starting_x2_dew<I: IdealGas, R: Residual>(
+    eos: &Arc<EquationOfState<I, R>>,
     temperature: SINumber,
     pressure: SINumber,
     vapor_molefracs: &Array1<f64>,
     liquid_molefracs: Option<&Array1<f64>>,
-) -> EosResult<[State<E>; 2]> {
+) -> EosResult<[State<I, R>; 2]> {
     let vapor_state = State::new_npt(
         eos,
         temperature,
@@ -353,13 +353,13 @@ fn starting_x2_dew<E: EquationOfState>(
     Ok([vapor_state, liquid_state])
 }
 
-fn bubble_dew<E: EquationOfState>(
+fn bubble_dew<I: IdealGas, R: Residual>(
     tp_spec: TPSpec,
     mut var_tp: TPSpec,
-    mut state1: State<E>,
-    mut state2: State<E>,
+    mut state1: State<I, R>,
+    mut state2: State<I, R>,
     options: (SolverOptions, SolverOptions),
-) -> EosResult<PhaseEquilibrium<E, 2>>
+) -> EosResult<PhaseEquilibrium<I, R, 2>>
 where
     SINumber: std::fmt::Display,
 {
@@ -441,10 +441,10 @@ where
     }
 }
 
-fn adjust_t_p<E: EquationOfState>(
+fn adjust_t_p<I: IdealGas, R: Residual>(
     var: &mut TPSpec,
-    state1: &mut State<E>,
-    state2: &mut State<E>,
+    state1: &mut State<I, R>,
+    state2: &mut State<I, R>,
     verbosity: Verbosity,
 ) -> EosResult<f64>
 where
@@ -509,10 +509,10 @@ where
     Ok(f.abs())
 }
 
-fn adjust_states<E: EquationOfState>(
+fn adjust_states<I: IdealGas, R: Residual>(
     var: &TPSpec,
-    state1: &mut State<E>,
-    state2: &mut State<E>,
+    state1: &mut State<I, R>,
+    state2: &mut State<I, R>,
     moles_state2: Option<&SIArray1>,
 ) -> EosResult<()> {
     let (temperature, pressure) = match var {
@@ -536,9 +536,9 @@ fn adjust_states<E: EquationOfState>(
     Ok(())
 }
 
-fn adjust_x2<E: EquationOfState>(
-    state1: &State<E>,
-    state2: &mut State<E>,
+fn adjust_x2<I: IdealGas, R: Residual>(
+    state1: &State<I, R>,
+    state2: &mut State<I, R>,
     verbosity: Verbosity,
 ) -> EosResult<f64> {
     let x1 = &state1.molefracs;
@@ -558,11 +558,11 @@ fn adjust_x2<E: EquationOfState>(
     Ok(err_out)
 }
 
-fn newton_step<E: EquationOfState>(
+fn newton_step<I: IdealGas, R: Residual>(
     tp_spec: TPSpec,
     var: &mut TPSpec,
-    state1: &mut State<E>,
-    state2: &mut State<E>,
+    state1: &mut State<I, R>,
+    state2: &mut State<I, R>,
     verbosity: Verbosity,
 ) -> EosResult<f64>
 where
@@ -574,10 +574,10 @@ where
     }
 }
 
-fn newton_step_t<E: EquationOfState>(
+fn newton_step_t<I: IdealGas, R: Residual>(
     pressure: &mut TPSpec,
-    state1: &mut State<E>,
-    state2: &mut State<E>,
+    state1: &mut State<I, R>,
+    state2: &mut State<I, R>,
     verbosity: Verbosity,
 ) -> EosResult<f64>
 where
@@ -651,11 +651,11 @@ where
     Ok(error)
 }
 
-fn newton_step_p<E: EquationOfState>(
+fn newton_step_p<I: IdealGas, R: Residual>(
     pressure: SINumber,
     temperature: &mut TPSpec,
-    state1: &mut State<E>,
-    state2: &mut State<E>,
+    state1: &mut State<I, R>,
+    state2: &mut State<I, R>,
     verbosity: Verbosity,
 ) -> EosResult<f64>
 where

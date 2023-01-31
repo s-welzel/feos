@@ -1,5 +1,5 @@
 use super::{PhaseEquilibrium, SolverOptions, Verbosity};
-use crate::equation_of_state::EquationOfState;
+use crate::equation_of_state::{IdealGas, Residual};
 use crate::errors::{EosError, EosResult};
 use crate::state::{Contributions, DensityInitialization, State};
 use crate::EosUnit;
@@ -18,7 +18,7 @@ const MINIMIZE_KMAX: usize = 100;
 const ZERO_TPD: f64 = -1E-08;
 
 /// # Stability analysis
-impl<E: EquationOfState> State<E> {
+impl<I: IdealGas, R: Residual> State<I, R> {
     /// Determine if the state is stable, i.e. if a phase split should
     /// occur or not.
     pub fn is_stable(&self, options: SolverOptions) -> EosResult<bool> {
@@ -28,7 +28,7 @@ impl<E: EquationOfState> State<E> {
     /// Perform a stability analysis. The result is a list of [State]s with
     /// negative tangent plane distance (i.e. lower Gibbs energy) that can be
     /// used as initial estimates for a phase equilibrium calculation.
-    pub fn stability_analysis(&self, options: SolverOptions) -> EosResult<Vec<State<E>>> {
+    pub fn stability_analysis(&self, options: SolverOptions) -> EosResult<Vec<State<I, R>>> {
         let mut result = Vec::new();
         for i_trial in 0..self.eos.components() + 1 {
             let phase = if i_trial == self.eos.components() {
@@ -61,7 +61,7 @@ impl<E: EquationOfState> State<E> {
         Ok(result)
     }
 
-    fn define_trial_state(&self, dominant_component: usize) -> EosResult<State<E>> {
+    fn define_trial_state(&self, dominant_component: usize) -> EosResult<State<I, R>> {
         let x_feed = &self.molefracs;
 
         let (x_trial, phase) = if dominant_component == self.eos.components() {
@@ -94,7 +94,7 @@ impl<E: EquationOfState> State<E> {
 
     fn minimize_tpd(
         &self,
-        trial: &mut State<E>,
+        trial: &mut State<I, R>,
         options: SolverOptions,
     ) -> EosResult<(Option<f64>, usize)> {
         let (max_iter, tol, verbosity) = options.unwrap_or(MINIMIZE_KMAX, MINIMIZE_TOL);

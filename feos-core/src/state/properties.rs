@@ -1,7 +1,7 @@
 use super::{Derivative::*, PartialDerivative, State};
-use crate::equation_of_state::{EntropyScaling, EquationOfState, MolarWeight};
+use crate::equation_of_state::{MolarWeight, Residual};
 use crate::errors::EosResult;
-use crate::EosUnit;
+use crate::{EosUnit, IdealGas};
 use ndarray::{arr1, Array1, Array2};
 use num_dual::DualNum;
 use quantity::si::*;
@@ -32,7 +32,7 @@ pub enum Contributions {
 }
 
 /// # State properties
-impl<E: EquationOfState> State<E> {
+impl<I: IdealGas, R: Residual> State<I, R> {
     fn get_or_compute_derivative(
         &self,
         derivative: PartialDerivative,
@@ -117,32 +117,32 @@ impl<E: EquationOfState> State<E> {
             _ => Some(match derivative {
                 PartialDerivative::Zeroth => {
                     let new_state = self.derive0();
-                    self.eos.ideal_gas().evaluate(&new_state)
+                    self.eos.evaluate_ideal_gas(&new_state)
                         * SIUnit::reference_energy()
                         * new_state.temperature
                 }
                 PartialDerivative::First(v) => {
                     let new_state = self.derive1(v);
-                    (self.eos.ideal_gas().evaluate(&new_state) * new_state.temperature).eps[0]
+                    (self.eos.evaluate_ideal_gas(&new_state) * new_state.temperature).eps[0]
                         * SIUnit::reference_energy()
                         / v.reference()
                 }
                 PartialDerivative::Second(v) => {
                     let new_state = self.derive2(v);
-                    (self.eos.ideal_gas().evaluate(&new_state) * new_state.temperature).v2[0]
+                    (self.eos.evaluate_ideal_gas(&new_state) * new_state.temperature).v2[0]
                         * SIUnit::reference_energy()
                         / (v.reference() * v.reference())
                 }
                 PartialDerivative::SecondMixed(v1, v2) => {
                     let new_state = self.derive2_mixed(v1, v2);
-                    (self.eos.ideal_gas().evaluate(&new_state) * new_state.temperature).eps1eps2
+                    (self.eos.evaluate_ideal_gas(&new_state) * new_state.temperature).eps1eps2
                         [(0, 0)]
                         * SIUnit::reference_energy()
                         / (v1.reference() * v2.reference())
                 }
                 PartialDerivative::Third(v) => {
                     let new_state = self.derive3(v);
-                    (self.eos.ideal_gas().evaluate(&new_state) * new_state.temperature).v3
+                    (self.eos.evaluate_ideal_gas(&new_state) * new_state.temperature).v3
                         * SIUnit::reference_energy()
                         / (v.reference() * v.reference() * v.reference())
                 }
@@ -157,10 +157,10 @@ impl<E: EquationOfState> State<E> {
         }
     }
 
-    fn evaluate_property<R, F>(&self, f: F, contributions: Contributions, additive: bool) -> R
+    fn evaluate_property<T, F>(&self, f: F, contributions: Contributions, additive: bool) -> T
     where
-        R: Add<Output = R> + Sub<Output = R>,
-        F: Fn(&Self, Evaluate) -> R,
+        T: Add<Output = T> + Sub<Output = T>,
+        F: Fn(&Self, Evaluate) -> T,
     {
         match contributions {
             Contributions::IdealGas => f(self, Evaluate::IdealGas),
@@ -520,12 +520,15 @@ impl<E: EquationOfState> State<E> {
     /// Helmholtz energy $A$ evaluated for each contribution of the equation of state.
     pub fn helmholtz_energy_contributions(&self) -> Vec<(String, SINumber)> {
         let new_state = self.derive0();
-        let contributions = self.eos.evaluate_residual_contributions(&new_state);
+        let contributions = self
+            .eos
+            .residual
+            .evaluate_residual_contributions(&new_state);
         let mut res = Vec::with_capacity(contributions.len() + 1);
-        let ig = self.eos.ideal_gas();
+        let ig = &self.eos.ideal_gas;
         res.push((
             ig.to_string(),
-            ig.evaluate(&new_state) * new_state.temperature * SIUnit::reference_energy(),
+            ig.helmholtz_energy(&new_state) * new_state.temperature * SIUnit::reference_energy(),
         ));
         for (s, v) in contributions {
             res.push((s, v * new_state.temperature * SIUnit::reference_energy()));
@@ -536,12 +539,15 @@ impl<E: EquationOfState> State<E> {
     /// Pressure $p$ evaluated for each contribution of the equation of state.
     pub fn pressure_contributions(&self) -> Vec<(String, SINumber)> {
         let new_state = self.derive1(DV);
-        let contributions = self.eos.evaluate_residual_contributions(&new_state);
+        let contributions = self
+            .eos
+            .residual
+            .evaluate_residual_contributions(&new_state);
         let mut res = Vec::with_capacity(contributions.len() + 1);
-        let ig = self.eos.ideal_gas();
+        let ig = &self.eos.ideal_gas;
         res.push((
             ig.to_string(),
-            -(ig.evaluate(&new_state) * new_state.temperature).eps[0]
+            -(ig.helmholtz_energy(&new_state) * new_state.temperature).eps[0]
                 * SIUnit::reference_pressure(),
         ));
         for (s, v) in contributions {
@@ -556,12 +562,15 @@ impl<E: EquationOfState> State<E> {
     /// Chemical potential $\mu_i$ evaluated for each contribution of the equation of state.
     pub fn chemical_potential_contributions(&self, component: usize) -> Vec<(String, SINumber)> {
         let new_state = self.derive1(DN(component));
-        let contributions = self.eos.evaluate_residual_contributions(&new_state);
+        let contributions = self
+            .eos
+            .residual
+            .evaluate_residual_contributions(&new_state);
         let mut res = Vec::with_capacity(contributions.len() + 1);
-        let ig = self.eos.ideal_gas();
+        let ig = &self.eos.ideal_gas;
         res.push((
             ig.to_string(),
-            (ig.evaluate(&new_state) * new_state.temperature).eps[0]
+            (ig.helmholtz_energy(&new_state) * new_state.temperature).eps[0]
                 * SIUnit::reference_molar_energy(),
         ));
         for (s, v) in contributions {
@@ -578,10 +587,10 @@ impl<E: EquationOfState> State<E> {
 ///
 /// These properties are available for equations of state
 /// that implement the [MolarWeight] trait.
-impl<E: EquationOfState + MolarWeight> State<E> {
+impl<I: IdealGas, R: Residual + MolarWeight> State<I, R> {
     /// Total molar weight: $MW=\sum_ix_iMW_i$
     pub fn total_molar_weight(&self) -> SINumber {
-        (self.eos.molar_weight() * &self.molefracs).sum()
+        (self.eos.residual.molar_weight() * &self.molefracs).sum()
     }
 
     /// Mass of each component: $m_i=n_iMW_i$
@@ -637,7 +646,7 @@ impl<E: EquationOfState + MolarWeight> State<E> {
     }
 }
 
-impl<E: EquationOfState> State<E> {
+impl<I: IdealGas, R: Residual> State<I, R> {
     // This function is designed specifically for use in density iterations
     pub(crate) fn p_dpdrho(&self) -> (SINumber, SINumber) {
         let dp_dv = self.dp_dv(Contributions::Total);
@@ -659,112 +668,112 @@ impl<E: EquationOfState> State<E> {
     }
 }
 
-/// # Transport properties
-///
-/// These properties are available for equations of state
-/// that implement the [EntropyScaling] trait.
-impl<E: EquationOfState + EntropyScaling> State<E> {
-    /// Return the viscosity via entropy scaling.
-    pub fn viscosity(&self) -> EosResult<SINumber> {
-        let s = self
-            .molar_entropy(Contributions::ResidualNvt)
-            .to_reduced(SIUnit::reference_molar_entropy())?;
-        Ok(self
-            .eos
-            .viscosity_reference(self.temperature, self.volume, &self.moles)?
-            * self.eos.viscosity_correlation(s, &self.molefracs)?.exp())
-    }
+// /// # Transport properties
+// ///
+// /// These properties are available for equations of state
+// /// that implement the [EntropyScaling] trait.
+// impl<I: IdealGas, R: Residual + EntropyScaling> State<I, R> {
+//     /// Return the viscosity via entropy scaling.
+//     pub fn viscosity(&self) -> EosResult<SINumber> {
+//         let s = self
+//             .molar_entropy(Contributions::ResidualNvt)
+//             .to_reduced(SIUnit::reference_molar_entropy())?;
+//         Ok(self
+//             .eos
+//             .viscosity_reference(self.temperature, self.volume, &self.moles)?
+//             * self.eos.viscosity_correlation(s, &self.molefracs)?.exp())
+//     }
 
-    /// Return the logarithm of the reduced viscosity.
-    ///
-    /// This term equals the viscosity correlation function
-    /// that is used for entropy scaling.
-    pub fn ln_viscosity_reduced(&self) -> EosResult<f64> {
-        let s = self
-            .molar_entropy(Contributions::ResidualNvt)
-            .to_reduced(SIUnit::reference_molar_entropy())?;
-        self.eos.viscosity_correlation(s, &self.molefracs)
-    }
+//     /// Return the logarithm of the reduced viscosity.
+//     ///
+//     /// This term equals the viscosity correlation function
+//     /// that is used for entropy scaling.
+//     pub fn ln_viscosity_reduced(&self) -> EosResult<f64> {
+//         let s = self
+//             .molar_entropy(Contributions::ResidualNvt)
+//             .to_reduced(SIUnit::reference_molar_entropy())?;
+//         self.eos.viscosity_correlation(s, &self.molefracs)
+//     }
 
-    /// Return the viscosity reference as used in entropy scaling.
-    pub fn viscosity_reference(&self) -> EosResult<SINumber> {
-        self.eos
-            .viscosity_reference(self.temperature, self.volume, &self.moles)
-    }
+//     /// Return the viscosity reference as used in entropy scaling.
+//     pub fn viscosity_reference(&self) -> EosResult<SINumber> {
+//         self.eos
+//             .viscosity_reference(self.temperature, self.volume, &self.moles)
+//     }
 
-    /// Return the diffusion via entropy scaling.
-    pub fn diffusion(&self) -> EosResult<SINumber> {
-        let s = self
-            .molar_entropy(Contributions::ResidualNvt)
-            .to_reduced(SIUnit::reference_molar_entropy())?;
-        Ok(self
-            .eos
-            .diffusion_reference(self.temperature, self.volume, &self.moles)?
-            * self.eos.diffusion_correlation(s, &self.molefracs)?.exp())
-    }
+//     /// Return the diffusion via entropy scaling.
+//     pub fn diffusion(&self) -> EosResult<SINumber> {
+//         let s = self
+//             .molar_entropy(Contributions::ResidualNvt)
+//             .to_reduced(SIUnit::reference_molar_entropy())?;
+//         Ok(self
+//             .eos
+//             .diffusion_reference(self.temperature, self.volume, &self.moles)?
+//             * self.eos.diffusion_correlation(s, &self.molefracs)?.exp())
+//     }
 
-    /// Return the logarithm of the reduced diffusion.
-    ///
-    /// This term equals the diffusion correlation function
-    /// that is used for entropy scaling.
-    pub fn ln_diffusion_reduced(&self) -> EosResult<f64> {
-        let s = self
-            .molar_entropy(Contributions::ResidualNvt)
-            .to_reduced(SIUnit::reference_molar_entropy())?;
-        self.eos.diffusion_correlation(s, &self.molefracs)
-    }
+//     /// Return the logarithm of the reduced diffusion.
+//     ///
+//     /// This term equals the diffusion correlation function
+//     /// that is used for entropy scaling.
+//     pub fn ln_diffusion_reduced(&self) -> EosResult<f64> {
+//         let s = self
+//             .molar_entropy(Contributions::ResidualNvt)
+//             .to_reduced(SIUnit::reference_molar_entropy())?;
+//         self.eos.diffusion_correlation(s, &self.molefracs)
+//     }
 
-    /// Return the diffusion reference as used in entropy scaling.
-    pub fn diffusion_reference(&self) -> EosResult<SINumber> {
-        self.eos
-            .diffusion_reference(self.temperature, self.volume, &self.moles)
-    }
+//     /// Return the diffusion reference as used in entropy scaling.
+//     pub fn diffusion_reference(&self) -> EosResult<SINumber> {
+//         self.eos
+//             .diffusion_reference(self.temperature, self.volume, &self.moles)
+//     }
 
-    /// Return the thermal conductivity via entropy scaling.
-    pub fn thermal_conductivity(&self) -> EosResult<SINumber> {
-        let s = self
-            .molar_entropy(Contributions::ResidualNvt)
-            .to_reduced(SIUnit::reference_molar_entropy())?;
-        Ok(self
-            .eos
-            .thermal_conductivity_reference(self.temperature, self.volume, &self.moles)?
-            * self
-                .eos
-                .thermal_conductivity_correlation(s, &self.molefracs)?
-                .exp())
-    }
+//     /// Return the thermal conductivity via entropy scaling.
+//     pub fn thermal_conductivity(&self) -> EosResult<SINumber> {
+//         let s = self
+//             .molar_entropy(Contributions::ResidualNvt)
+//             .to_reduced(SIUnit::reference_molar_entropy())?;
+//         Ok(self
+//             .eos
+//             .thermal_conductivity_reference(self.temperature, self.volume, &self.moles)?
+//             * self
+//                 .eos
+//                 .thermal_conductivity_correlation(s, &self.molefracs)?
+//                 .exp())
+//     }
 
-    /// Return the logarithm of the reduced thermal conductivity.
-    ///
-    /// This term equals the thermal conductivity correlation function
-    /// that is used for entropy scaling.
-    pub fn ln_thermal_conductivity_reduced(&self) -> EosResult<f64> {
-        let s = self
-            .molar_entropy(Contributions::ResidualNvt)
-            .to_reduced(SIUnit::reference_molar_entropy())?;
-        self.eos
-            .thermal_conductivity_correlation(s, &self.molefracs)
-    }
+//     /// Return the logarithm of the reduced thermal conductivity.
+//     ///
+//     /// This term equals the thermal conductivity correlation function
+//     /// that is used for entropy scaling.
+//     pub fn ln_thermal_conductivity_reduced(&self) -> EosResult<f64> {
+//         let s = self
+//             .molar_entropy(Contributions::ResidualNvt)
+//             .to_reduced(SIUnit::reference_molar_entropy())?;
+//         self.eos
+//             .thermal_conductivity_correlation(s, &self.molefracs)
+//     }
 
-    /// Return the thermal conductivity reference as used in entropy scaling.
-    pub fn thermal_conductivity_reference(&self) -> EosResult<SINumber> {
-        self.eos
-            .thermal_conductivity_reference(self.temperature, self.volume, &self.moles)
-    }
-}
+//     /// Return the thermal conductivity reference as used in entropy scaling.
+//     pub fn thermal_conductivity_reference(&self) -> EosResult<SINumber> {
+//         self.eos
+//             .thermal_conductivity_reference(self.temperature, self.volume, &self.moles)
+//     }
+// }
 
 /// A list of states for a simple access to properties
 /// of multiple states.
-pub struct StateVec<'a, E>(pub Vec<&'a State<E>>);
+pub struct StateVec<'a, I: IdealGas, R: Residual>(pub Vec<&'a State<I, R>>);
 
-impl<'a, E> FromIterator<&'a State<E>> for StateVec<'a, E> {
-    fn from_iter<I: IntoIterator<Item = &'a State<E>>>(iter: I) -> Self {
+impl<'a, I: IdealGas, R: Residual> FromIterator<&'a State<I, R>> for StateVec<'a, I, R> {
+    fn from_iter<T: IntoIterator<Item = &'a State<I, R>>>(iter: T) -> Self {
         Self(iter.into_iter().collect())
     }
 }
 
-impl<'a, E> IntoIterator for StateVec<'a, E> {
-    type Item = &'a State<E>;
+impl<'a, I: IdealGas, R: Residual> IntoIterator for StateVec<'a, I, R> {
+    type Item = &'a State<I, R>;
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -772,15 +781,15 @@ impl<'a, E> IntoIterator for StateVec<'a, E> {
     }
 }
 
-impl<'a, E> Deref for StateVec<'a, E> {
-    type Target = Vec<&'a State<E>>;
+impl<'a, I: IdealGas, R: Residual> Deref for StateVec<'a, I, R> {
+    type Target = Vec<&'a State<I, R>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<'a, E: EquationOfState> StateVec<'a, E> {
+impl<'a, I: IdealGas, R: Residual> StateVec<'a, I, R> {
     pub fn temperature(&self) -> SIArray1 {
         SIArray1::from_shape_fn(self.0.len(), |i| self.0[i].temperature)
     }
@@ -824,7 +833,7 @@ impl<'a, E: EquationOfState> StateVec<'a, E> {
     }
 }
 
-impl<'a, E: EquationOfState + MolarWeight> StateVec<'a, E> {
+impl<'a, I: IdealGas, R: Residual + MolarWeight> StateVec<'a, I, R> {
     pub fn mass_density(&self) -> SIArray1 {
         SIArray1::from_shape_fn(self.0.len(), |i| self.0[i].mass_density())
     }

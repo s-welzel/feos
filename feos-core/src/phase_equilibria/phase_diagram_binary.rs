@@ -1,5 +1,5 @@
 use super::{PhaseDiagram, PhaseEquilibrium, SolverOptions};
-use crate::equation_of_state::EquationOfState;
+use crate::equation_of_state::{EquationOfState, IdealGas, Residual};
 use crate::errors::{EosError, EosResult};
 use crate::state::{Contributions, DensityInitialization, State, StateBuilder, TPSpec};
 use crate::EosUnit;
@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 const DEFAULT_POINTS: usize = 51;
 
-impl<E: EquationOfState> PhaseDiagram<E, 2> {
+impl<I: IdealGas, R: Residual> PhaseDiagram<I, R, 2> {
     /// Create a new binary phase diagram exhibiting a
     /// vapor/liquid equilibrium.
     ///
@@ -19,7 +19,7 @@ impl<E: EquationOfState> PhaseDiagram<E, 2> {
     /// phases are known, they can be passed as `x_lle` to avoid
     /// the calculation of unstable branches.
     pub fn binary_vle(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         temperature_or_pressure: SINumber,
         npoints: Option<usize>,
         x_lle: Option<(f64, f64)>,
@@ -96,13 +96,13 @@ impl<E: EquationOfState> PhaseDiagram<E, 2> {
 
     #[allow(clippy::type_complexity)]
     fn calculate_vlle(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         tp: TPSpec,
         npoints: usize,
         x_lle: (f64, f64),
-        vle_sat: [Option<PhaseEquilibrium<E, 2>>; 2],
+        vle_sat: [Option<PhaseEquilibrium<I, R, 2>>; 2],
         bubble_dew_options: (SolverOptions, SolverOptions),
-    ) -> EosResult<(Vec<PhaseEquilibrium<E, 2>>, Vec<PhaseEquilibrium<E, 2>>)> {
+    ) -> EosResult<(Vec<PhaseEquilibrium<I, R, 2>>, Vec<PhaseEquilibrium<I, R, 2>>)> {
         match vle_sat {
             [Some(vle2), Some(vle1)] => {
                 let states1 = iterate_vle(
@@ -138,7 +138,7 @@ impl<E: EquationOfState> PhaseDiagram<E, 2> {
     /// liquid diagrams as well, as long as the feed composition is
     /// in a two phase region.
     pub fn lle(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         temperature_or_pressure: SINumber,
         feed: &SIArray1,
         min_tp: SINumber,
@@ -171,16 +171,16 @@ impl<E: EquationOfState> PhaseDiagram<E, 2> {
     }
 }
 
-fn iterate_vle<E: EquationOfState>(
-    eos: &Arc<E>,
+fn iterate_vle<I: IdealGas, R: Residual>(
+    eos: &Arc<EquationOfState<I, R>>,
     tp: TPSpec,
     x_lim: &[f64],
-    vle_0: PhaseEquilibrium<E, 2>,
-    vle_1: Option<PhaseEquilibrium<E, 2>>,
+    vle_0: PhaseEquilibrium<I, R, 2>,
+    vle_1: Option<PhaseEquilibrium<I, R, 2>>,
     npoints: usize,
     bubble: bool,
     bubble_dew_options: (SolverOptions, SolverOptions),
-) -> Vec<PhaseEquilibrium<E, 2>>
+) -> Vec<PhaseEquilibrium<I, R, 2>>
 where
     SINumber: std::fmt::Display + std::fmt::LowerExp,
 {
@@ -231,7 +231,7 @@ where
     vle_vec
 }
 
-impl<E: EquationOfState> State<E> {
+impl<I: IdealGas, R: Residual> State<I, R> {
     fn tp(&self, tp: TPSpec) -> SINumber {
         match tp {
             TPSpec::Temperature(_) => self.pressure(Contributions::Total),
@@ -241,20 +241,20 @@ impl<E: EquationOfState> State<E> {
 }
 
 /// Phase diagram (Txy or pxy) for a system with heteroazeotropic phase behavior.
-pub struct PhaseDiagramHetero<E> {
-    pub vle1: PhaseDiagram<E, 2>,
-    pub vle2: PhaseDiagram<E, 2>,
-    pub lle: Option<PhaseDiagram<E, 2>>,
+pub struct PhaseDiagramHetero<I: IdealGas, R: Residual> {
+    pub vle1: PhaseDiagram<I, R, 2>,
+    pub vle2: PhaseDiagram<I, R, 2>,
+    pub lle: Option<PhaseDiagram<I, R, 2>>,
 }
 
-impl<E: EquationOfState> PhaseDiagram<E, 2> {
+impl<I: IdealGas, R: Residual> PhaseDiagram<I, R, 2> {
     /// Create a new binary phase diagram exhibiting a
     /// vapor/liquid/liquid equilibrium.
     ///
     /// The `x_lle` parameter is used as initial values for the calculation
     /// of the heteroazeotrope.
     pub fn binary_vlle(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         temperature_or_pressure: SINumber,
         x_lle: (f64, f64),
         tp_lim_lle: Option<SINumber>,
@@ -262,7 +262,7 @@ impl<E: EquationOfState> PhaseDiagram<E, 2> {
         npoints_vle: Option<usize>,
         npoints_lle: Option<usize>,
         bubble_dew_options: (SolverOptions, SolverOptions),
-    ) -> EosResult<PhaseDiagramHetero<E>> {
+    ) -> EosResult<PhaseDiagramHetero<I, R>> {
         let npoints_vle = npoints_vle.unwrap_or(DEFAULT_POINTS);
         let tp = temperature_or_pressure.try_into()?;
 
@@ -329,8 +329,8 @@ impl<E: EquationOfState> PhaseDiagram<E, 2> {
     }
 }
 
-impl<E> PhaseDiagramHetero<E> {
-    pub fn vle(&self) -> PhaseDiagram<E, 2> {
+impl<I: IdealGas, R: Residual> PhaseDiagramHetero<I, R> {
+    pub fn vle(&self) -> PhaseDiagram<I, R, 2> {
         PhaseDiagram::new(
             self.vle1
                 .states
@@ -346,14 +346,14 @@ const MAX_ITER_HETERO: usize = 50;
 const TOL_HETERO: f64 = 1e-8;
 
 /// # Heteroazeotropes
-impl<E: EquationOfState> PhaseEquilibrium<E, 3>
+impl<I: IdealGas, R: Residual> PhaseEquilibrium<I, R, 3>
 where
     SINumber: std::fmt::Display + std::fmt::LowerExp,
 {
     /// Calculate a heteroazeotrope (three phase equilbrium) for a binary
     /// system and given pressure.
     pub fn heteroazeotrope(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         temperature_or_pressure: SINumber,
         x_init: (f64, f64),
         tp_init: Option<SINumber>,
@@ -373,7 +373,7 @@ where
     /// Calculate a heteroazeotrope (three phase equilbrium) for a binary
     /// system and given temperature.
     fn heteroazeotrope_t(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         temperature: SINumber,
         x_init: (f64, f64),
         p_init: Option<SINumber>,
@@ -525,7 +525,7 @@ where
     /// Calculate a heteroazeotrope (three phase equilbrium) for a binary
     /// system and given pressure.
     fn heteroazeotrope_p(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         pressure: SINumber,
         x_init: (f64, f64),
         t_init: Option<SINumber>,

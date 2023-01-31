@@ -1,15 +1,15 @@
 use super::{PhaseDiagram, PhaseEquilibrium, SolverOptions};
-use crate::equation_of_state::EquationOfState;
+use crate::equation_of_state::{EquationOfState, IdealGas, Residual};
 use crate::errors::EosResult;
 use crate::state::State;
 use crate::Contributions;
 use quantity::si::{SIArray1, SINumber};
 use std::sync::Arc;
 
-impl<E: EquationOfState> PhaseDiagram<E, 2> {
+impl<I: IdealGas, R: Residual> PhaseDiagram<I, R, 2> {
     /// Calculate the bubble point line of a mixture with given composition.
     pub fn bubble_point_line(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         moles: &SIArray1,
         min_temperature: SINumber,
         npoints: usize,
@@ -30,7 +30,7 @@ impl<E: EquationOfState> PhaseDiagram<E, 2> {
         let temperatures = SIArray1::linspace(min_temperature, max_temperature, npoints - 1)?;
         let molefracs = moles.to_reduced(moles.sum())?;
 
-        let mut vle: Option<PhaseEquilibrium<E, 2>> = None;
+        let mut vle: Option<PhaseEquilibrium<I, R, 2>> = None;
         for ti in &temperatures {
             // calculate new liquid point
             let p_init = vle
@@ -58,7 +58,7 @@ impl<E: EquationOfState> PhaseDiagram<E, 2> {
 
     /// Calculate the dew point line of a mixture with given composition.
     pub fn dew_point_line(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         moles: &SIArray1,
         min_temperature: SINumber,
         npoints: usize,
@@ -80,7 +80,7 @@ impl<E: EquationOfState> PhaseDiagram<E, 2> {
         let temperatures = SIArray1::linspace(min_temperature, max_temperature, n_t - 1)?;
         let molefracs = moles.to_reduced(moles.sum())?;
 
-        let mut vle: Option<PhaseEquilibrium<E, 2>> = None;
+        let mut vle: Option<PhaseEquilibrium<I, R, 2>> = None;
         for ti in &temperatures {
             let p_init = vle
                 .as_ref()
@@ -123,7 +123,7 @@ impl<E: EquationOfState> PhaseDiagram<E, 2> {
 
     /// Calculate the spinodal lines for a mixture with fixed composition.
     pub fn spinodal(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         moles: &SIArray1,
         min_temperature: SINumber,
         npoints: usize,

@@ -26,19 +26,17 @@ macro_rules! log_result {
     }
 }
 
-pub mod equation_of_state2;
 pub mod cubic;
 mod density_iteration;
-mod equation_of_state;
+pub mod equation_of_state;
 mod errors;
 pub mod joback;
 pub mod parameter;
+pub use equation_of_state::{
+    HelmholtzEnergy, HelmholtzEnergyDual, IdealGas, MolarWeight,
+};
 mod phase_equilibria;
 mod state;
-pub use equation_of_state::{
-    EntropyScaling, EquationOfState, HelmholtzEnergy, HelmholtzEnergyDual, IdealGasContribution,
-    IdealGasContributionDual, MolarWeight,
-};
 pub use errors::{EosError, EosResult};
 pub use phase_equilibria::{
     PhaseDiagram, PhaseDiagramHetero, PhaseEquilibrium, SolverOptions, Verbosity,

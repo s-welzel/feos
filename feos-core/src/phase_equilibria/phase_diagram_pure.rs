@@ -1,5 +1,5 @@
 use super::{PhaseEquilibrium, SolverOptions};
-use crate::equation_of_state::EquationOfState;
+use crate::equation_of_state::{EquationOfState, IdealGas, Residual};
 use crate::errors::EosResult;
 use crate::state::{State, StateVec};
 #[cfg(feature = "rayon")]
@@ -14,11 +14,11 @@ use rayon::{prelude::*, ThreadPool};
 use std::sync::Arc;
 
 /// Pure component and binary mixture phase diagrams.
-pub struct PhaseDiagram<E, const N: usize> {
-    pub states: Vec<PhaseEquilibrium<E, N>>,
+pub struct PhaseDiagram<I: IdealGas, R: Residual, const N: usize> {
+    pub states: Vec<PhaseEquilibrium<I, R, N>>,
 }
 
-impl<E, const N: usize> Clone for PhaseDiagram<E, N> {
+impl<I: IdealGas, R: Residual, const N: usize> Clone for PhaseDiagram<I, R, N> {
     fn clone(&self) -> Self {
         Self {
             states: self.states.clone(),
@@ -26,17 +26,17 @@ impl<E, const N: usize> Clone for PhaseDiagram<E, N> {
     }
 }
 
-impl<E, const N: usize> PhaseDiagram<E, N> {
+impl<I: IdealGas, R: Residual, const N: usize> PhaseDiagram<I, R, N> {
     /// Create a phase diagram from a list of phase equilibria.
-    pub fn new(states: Vec<PhaseEquilibrium<E, N>>) -> Self {
+    pub fn new(states: Vec<PhaseEquilibrium<I, R, N>>) -> Self {
         Self { states }
     }
 }
 
-impl<E: EquationOfState> PhaseDiagram<E, 2> {
+impl<I: IdealGas, R: Residual> PhaseDiagram<I, R, 2> {
     /// Calculate a phase diagram for a pure component.
     pub fn pure(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         min_temperature: SINumber,
         npoints: usize,
         critical_temperature: Option<SINumber>,
@@ -63,23 +63,23 @@ impl<E: EquationOfState> PhaseDiagram<E, 2> {
     }
 
     /// Return the vapor states of the diagram.
-    pub fn vapor(&self) -> StateVec<'_, E> {
+    pub fn vapor(&self) -> StateVec<'_, I, R> {
         self.states.iter().map(|s| s.vapor()).collect()
     }
 
     /// Return the liquid states of the diagram.
-    pub fn liquid(&self) -> StateVec<'_, E> {
+    pub fn liquid(&self) -> StateVec<'_, I, R> {
         self.states.iter().map(|s| s.liquid()).collect()
     }
 }
 
 #[cfg(feature = "rayon")]
-impl<E: EquationOfState> PhaseDiagram<E, 2> {
+impl<I: IdealGas, R: Residual> PhaseDiagram<E, 2> {
     fn solve_temperatures(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         temperatures: ArrayView1<f64>,
         options: SolverOptions,
-    ) -> EosResult<Vec<PhaseEquilibrium<E, 2>>> {
+    ) -> EosResult<Vec<PhaseEquilibrium<I, R, 2>>> {
         let mut states = Vec::with_capacity(temperatures.len());
         let mut vle = None;
         for ti in temperatures {
@@ -98,7 +98,7 @@ impl<E: EquationOfState> PhaseDiagram<E, 2> {
     }
 
     pub fn par_pure(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         min_temperature: SINumber,
         npoints: usize,
         chunksize: usize,
@@ -116,7 +116,7 @@ impl<E: EquationOfState> PhaseDiagram<E, 2> {
             npoints - 1,
         );
 
-        let mut states: Vec<PhaseEquilibrium<E, 2>> = thread_pool.install(|| {
+        let mut states: Vec<PhaseEquilibrium<I, R, 2>> = thread_pool.install(|| {
             temperatures
                 .axis_chunks_iter(Axis(0), chunksize)
                 .into_par_iter()

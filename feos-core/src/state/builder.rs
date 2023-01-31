@@ -1,5 +1,6 @@
 use super::{DensityInitialization, State};
-use crate::equation_of_state::EquationOfState;
+use crate::equation_of_state::Residual;
+use crate::{equation_of_state::EquationOfState, IdealGas};
 use crate::errors::EosResult;
 use ndarray::Array1;
 use quantity::si::{SIArray1, SINumber};
@@ -10,6 +11,7 @@ use std::sync::Arc;
 /// # Examples
 /// ```
 /// # use feos_core::{EosResult, StateBuilder};
+/// # use feos_core::equation_of_state::EquationOfState;
 /// # use feos_core::cubic::{PengRobinson, PengRobinsonParameters};
 /// # use quantity::si::*;
 /// # use std::sync::Arc;
@@ -17,7 +19,8 @@ use std::sync::Arc;
 /// # use approx::assert_relative_eq;
 /// # fn main() -> EosResult<()> {
 /// // Create a state for given T,V,N
-/// let eos = Arc::new(PengRobinson::new(Arc::new(PengRobinsonParameters::new_simple(&[369.8], &[41.9 * 1e5], &[0.15], &[15.0])?)));
+/// let residual = PengRobinson::new(Arc::new(PengRobinsonParameters::new_simple(&[369.8], &[41.9 * 1e5], &[0.15], &[15.0])?));
+/// let eos = Arc::new(EquationOfState::new_default_ideal_gas(residual));
 /// let state = StateBuilder::new(&eos)
 ///                 .temperature(300.0 * KELVIN)
 ///                 .volume(12.5 * METER.powi(3))
@@ -26,7 +29,6 @@ use std::sync::Arc;
 /// assert_eq!(state.density, 0.2 * MOL / METER.powi(3));
 ///
 /// // For a pure component, the composition does not need to be specified.
-/// let eos = Arc::new(PengRobinson::new(Arc::new(PengRobinsonParameters::new_simple(&[369.8], &[41.9 * 1e5], &[0.15], &[15.0])?)));
 /// let state = StateBuilder::new(&eos)
 ///                 .temperature(300.0 * KELVIN)
 ///                 .volume(12.5 * METER.powi(3))
@@ -35,14 +37,15 @@ use std::sync::Arc;
 /// assert_eq!(state.density, 0.2 * MOL / METER.powi(3));
 ///
 /// // The state can be constructed without providing any extensive property.
-/// let eos = Arc::new(PengRobinson::new(
-///     Arc::new(PengRobinsonParameters::new_simple(
+/// let residual = PengRobinson::new(Arc::new(
+///     PengRobinsonParameters::new_simple(
 ///         &[369.8, 305.4],
 ///         &[41.9 * 1e5, 48.2 * 1e5],
 ///         &[0.15, 0.10],
 ///         &[15.0, 30.0]
-///     )?)
+///     )?
 /// ));
+/// let eos = Arc::new(EquationOfState::new_default_ideal_gas(residual));
 /// let state = StateBuilder::new(&eos)
 ///                 .temperature(300.0 * KELVIN)
 ///                 .partial_density(&(arr1(&[0.2, 0.6]) * MOL / METER.powi(3)))
@@ -52,8 +55,8 @@ use std::sync::Arc;
 /// # Ok(())
 /// # }
 /// ```
-pub struct StateBuilder<'a, E: EquationOfState> {
-    eos: Arc<E>,
+pub struct StateBuilder<'a, I: IdealGas, R: Residual> {
+    eos: Arc<EquationOfState<I, R>>,
     temperature: Option<SINumber>,
     volume: Option<SINumber>,
     density: Option<SINumber>,
@@ -69,9 +72,9 @@ pub struct StateBuilder<'a, E: EquationOfState> {
     initial_temperature: Option<SINumber>,
 }
 
-impl<'a, E: EquationOfState> StateBuilder<'a, E> {
+impl<'a, I: IdealGas, R: Residual> StateBuilder<'a, I, R> {
     /// Create a new `StateBuilder` for the given equation of state.
-    pub fn new(eos: &Arc<E>) -> Self {
+    pub fn new(eos: &Arc<EquationOfState<I, R>>) -> Self {
         StateBuilder {
             eos: eos.clone(),
             temperature: None,
@@ -181,7 +184,7 @@ impl<'a, E: EquationOfState> StateBuilder<'a, E> {
     }
 
     /// Try to build the state with the given inputs.
-    pub fn build(self) -> EosResult<State<E>> {
+    pub fn build(self) -> EosResult<State<I, R>> {
         State::new(
             &self.eos,
             self.temperature,
@@ -201,7 +204,7 @@ impl<'a, E: EquationOfState> StateBuilder<'a, E> {
     }
 }
 
-impl<'a, E: EquationOfState> Clone for StateBuilder<'a, E> {
+impl<'a, I: IdealGas, R: Residual> Clone for StateBuilder<'a, I, R> {
     fn clone(&self) -> Self {
         Self {
             eos: self.eos.clone(),

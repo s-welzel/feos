@@ -7,7 +7,7 @@
 //!
 //! Internally, all properties are computed using such states as input.
 use crate::density_iteration::density_iteration;
-use crate::equation_of_state::EquationOfState;
+use crate::equation_of_state::{EquationOfState, IdealGas, Residual};
 use crate::errors::{EosError, EosResult};
 use crate::EosUnit;
 use cache::Cache;
@@ -120,9 +120,9 @@ impl<D: DualNum<f64>> StateHD<D> {
 /// + [Stability analysis](#stability-analysis)
 /// + [Flash calculations](#flash-calculations)
 #[derive(Debug)]
-pub struct State<E> {
+pub struct State<I: IdealGas, R: Residual> {
     /// Equation of state
-    pub eos: Arc<E>,
+    pub eos: Arc<EquationOfState<I, R>>,
     /// Temperature $T$
     pub temperature: SINumber,
     /// Volume $V$
@@ -147,7 +147,7 @@ pub struct State<E> {
     cache: Mutex<Cache>,
 }
 
-impl<E> Clone for State<E> {
+impl<I: IdealGas, R: Residual> Clone for State<I, R> {
     fn clone(&self) -> Self {
         Self {
             eos: self.eos.clone(),
@@ -166,11 +166,10 @@ impl<E> Clone for State<E> {
     }
 }
 
-impl<E> fmt::Display for State<E>
+impl<I: IdealGas, R: Residual> fmt::Display for State<I, R>
 where
     SINumber: fmt::Display,
     SIArray1: fmt::Display,
-    E: EquationOfState,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.eos.components() == 1 {
@@ -217,14 +216,14 @@ pub(crate) enum PartialDerivative {
 }
 
 /// # State constructors
-impl<E: EquationOfState> State<E> {
+impl<I: IdealGas, R: Residual> State<I, R> {
     /// Return a new `State` given a temperature, an array of mole numbers and a volume.
     ///
     /// This function will perform a validation of the given properties, i.e. test for signs
     /// and if values are finite. It will **not** validate physics, i.e. if the resulting
     /// densities are below the maximum packing fraction.
     pub fn new_nvt(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         temperature: SINumber,
         volume: SINumber,
         moles: &SIArray1,
@@ -236,7 +235,7 @@ impl<E: EquationOfState> State<E> {
     }
 
     pub(super) fn new_nvt_unchecked(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         temperature: SINumber,
         volume: SINumber,
         moles: &SIArray1,
@@ -274,7 +273,11 @@ impl<E: EquationOfState> State<E> {
     /// This function will perform a validation of the given properties, i.e. test for signs
     /// and if values are finite. It will **not** validate physics, i.e. if the resulting
     /// densities are below the maximum packing fraction.
-    pub fn new_pure(eos: &Arc<E>, temperature: SINumber, density: SINumber) -> EosResult<Self> {
+    pub fn new_pure(
+        eos: &Arc<EquationOfState<I, R>>,
+        temperature: SINumber,
+        density: SINumber,
+    ) -> EosResult<Self> {
         let moles = arr1(&[1.0]) * SIUnit::reference_moles();
         Self::new_nvt(
             eos,
@@ -299,7 +302,7 @@ impl<E: EquationOfState> State<E> {
     ///
     /// When the state cannot be created using the combination of inputs.
     pub fn new(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         temperature: Option<SINumber>,
         volume: Option<SINumber>,
         density: Option<SINumber>,
@@ -431,7 +434,7 @@ impl<E: EquationOfState> State<E> {
     /// Return a new `State` using a density iteration. [DensityInitialization] is used to
     /// influence the calculation with respect to the possible solutions.
     pub fn new_npt(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         temperature: SINumber,
         pressure: SINumber,
         moles: &SIArray1,
@@ -498,7 +501,7 @@ impl<E: EquationOfState> State<E> {
 
     /// Return a new `State` for given pressure $p$, volume $V$, temperature $T$ and composition $x_i$.
     pub fn new_npvx(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         temperature: SINumber,
         pressure: SINumber,
         volume: SINumber,
@@ -513,7 +516,7 @@ impl<E: EquationOfState> State<E> {
 
     /// Return a new `State` for given pressure $p$ and molar enthalpy $h$.
     pub fn new_nph(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         pressure: SINumber,
         molar_enthalpy: SINumber,
         moles: &SIArray1,
@@ -534,7 +537,7 @@ impl<E: EquationOfState> State<E> {
 
     /// Return a new `State` for given temperature $T$ and molar enthalpy $h$.
     pub fn new_nth(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         temperature: SINumber,
         molar_enthalpy: SINumber,
         moles: &SIArray1,
@@ -561,7 +564,7 @@ impl<E: EquationOfState> State<E> {
 
     /// Return a new `State` for given temperature $T$ and molar entropy $s$.
     pub fn new_nts(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         temperature: SINumber,
         molar_entropy: SINumber,
         moles: &SIArray1,
@@ -585,7 +588,7 @@ impl<E: EquationOfState> State<E> {
 
     /// Return a new `State` for given pressure $p$ and molar entropy $s$.
     pub fn new_nps(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         pressure: SINumber,
         molar_entropy: SINumber,
         moles: &SIArray1,
@@ -606,7 +609,7 @@ impl<E: EquationOfState> State<E> {
 
     /// Return a new `State` for given volume $V$ and molar internal energy $u$.
     pub fn new_nvu(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         volume: SINumber,
         molar_internal_energy: SINumber,
         moles: &SIArray1,
@@ -746,9 +749,13 @@ fn is_close(x: SINumber, y: SINumber, atol: SINumber, rtol: f64) -> bool {
     (x - y).abs() <= atol + rtol * y.abs()
 }
 
-fn newton<E: EquationOfState, F>(mut x0: SINumber, mut f: F, atol: SINumber) -> EosResult<State<E>>
+fn newton<I: IdealGas, R: Residual, F>(
+    mut x0: SINumber,
+    mut f: F,
+    atol: SINumber,
+) -> EosResult<State<I, R>>
 where
-    F: FnMut(SINumber) -> EosResult<(SINumber, SINumber, State<E>)>,
+    F: FnMut(SINumber) -> EosResult<(SINumber, SINumber, State<I, R>)>,
 {
     let rtol = 1e-10;
     let maxiter = 50;

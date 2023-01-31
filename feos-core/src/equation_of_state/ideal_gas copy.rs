@@ -4,6 +4,8 @@ use num_dual::DualNum;
 use num_dual::*;
 use std::fmt;
 
+use super::debroglie::{DeBroglieWavelength, DeBroglieWavelengthDual};
+
 /// Ideal gas Helmholtz energy contribution that can
 /// be evaluated using generalized (hyper) dual numbers.
 ///
@@ -15,7 +17,10 @@ pub trait IdealGasDual<D: DualNum<f64>> {
     /// Return the number of components
     fn components(&self) -> usize;
 
-    /// The thermal de Broglie wavelength of each component in the form $\ln\left(\frac{\Lambda^3}{\AA^3}\right)$
+    /// Return an equation of state consisting of the components
+    /// contained in component_list.
+    fn subset(&self, component_list: &[usize]) -> Self;
+
     fn de_broglie_wavelength(&self, temperature: D) -> Array1<D>;
 
     /// Evaluate the ideal gas contribution for a given state.
@@ -38,14 +43,16 @@ pub trait IdealGasDual<D: DualNum<f64>> {
     }
 }
 
-/// Ideal gas model with de-Broglie wavelength of zero.
 pub struct DefaultIdealGas(pub usize);
+
 impl<D: DualNum<f64>> IdealGasDual<D> for DefaultIdealGas {
     fn components(&self) -> usize {
         self.0
     }
-
-    fn de_broglie_wavelength(&self, _: D) -> Array1<D> {
+    fn subset(&self, component_list: &[usize]) -> Self {
+        Self(component_list.len())
+    }
+    fn de_broglie_wavelength(&self, temperature: D) -> Array1<D> {
         Array1::zeros(self.0)
     }
 }
@@ -56,10 +63,6 @@ impl fmt::Display for DefaultIdealGas {
     }
 }
 
-/// Object safe version of the [IdealGasContributionDual] trait.
-///
-/// The trait is implemented automatically for every struct that implements
-/// the supertraits.
 pub trait IdealGas:
     IdealGasDual<f64>
     + IdealGasDual<Dual64>

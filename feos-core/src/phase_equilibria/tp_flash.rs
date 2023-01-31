@@ -1,5 +1,5 @@
 use super::{PhaseEquilibrium, SolverOptions, Verbosity};
-use crate::equation_of_state::EquationOfState;
+use crate::equation_of_state::{EquationOfState, IdealGas, Residual};
 use crate::errors::{EosError, EosResult};
 use crate::state::{Contributions, DensityInitialization, State};
 use ndarray::*;
@@ -11,18 +11,18 @@ const MAX_ITER_TP: usize = 400;
 const TOL_TP: f64 = 1e-8;
 
 /// # Flash calculations
-impl<E: EquationOfState> PhaseEquilibrium<E, 2> {
+impl<I: IdealGas, R: Residual> PhaseEquilibrium<I, R, 2> {
     /// Perform a Tp-flash calculation. If no initial values are
     /// given, the solution is initialized using a stability analysis.
     ///
     /// The algorithm can be use to calculate phase equilibria of systems
     /// containing non-volatile components (e.g. ions).
     pub fn tp_flash(
-        eos: &Arc<E>,
+        eos: &Arc<EquationOfState<I, R>>,
         temperature: SINumber,
         pressure: SINumber,
         feed: &SIArray1,
-        initial_state: Option<&PhaseEquilibrium<E, 2>>,
+        initial_state: Option<&PhaseEquilibrium<I, R, 2>>,
         options: SolverOptions,
         non_volatile_components: Option<Vec<usize>>,
     ) -> EosResult<Self> {
@@ -38,7 +38,7 @@ impl<E: EquationOfState> PhaseEquilibrium<E, 2> {
 }
 
 /// # Flash calculations
-impl<E: EquationOfState> State<E> {
+impl<I: IdealGas, R: Residual> State<I, R> {
     /// Perform a Tp-flash calculation using the [State] as feed.
     /// If no initial values are given, the solution is initialized
     /// using a stability analysis.
@@ -47,10 +47,10 @@ impl<E: EquationOfState> State<E> {
     /// containing non-volatile components (e.g. ions).
     pub fn tp_flash(
         &self,
-        initial_state: Option<&PhaseEquilibrium<E, 2>>,
+        initial_state: Option<&PhaseEquilibrium<I, R, 2>>,
         options: SolverOptions,
         non_volatile_components: Option<Vec<usize>>,
-    ) -> EosResult<PhaseEquilibrium<E, 2>> {
+    ) -> EosResult<PhaseEquilibrium<I, R, 2>> {
         // set options
         let (max_iter, tol, verbosity) = options.unwrap_or(MAX_ITER_TP, TOL_TP);
 
@@ -148,7 +148,7 @@ impl<E: EquationOfState> State<E> {
         Ok(new_vle_state)
     }
 
-    fn tangent_plane_distance(&self, trial_state: &State<E>) -> f64 {
+    fn tangent_plane_distance(&self, trial_state: &State<I, R>) -> f64 {
         let ln_phi_z = self.ln_phi();
         let ln_phi_w = trial_state.ln_phi();
         let z = &self.molefracs;
@@ -157,10 +157,10 @@ impl<E: EquationOfState> State<E> {
     }
 }
 
-impl<E: EquationOfState> PhaseEquilibrium<E, 2> {
+impl<I: IdealGas, R: Residual> PhaseEquilibrium<I, R, 2> {
     fn accelerated_successive_substitution(
         &mut self,
-        feed_state: &State<E>,
+        feed_state: &State<I, R>,
         iter: &mut usize,
         max_iter: usize,
         tol: f64,
@@ -225,7 +225,7 @@ impl<E: EquationOfState> PhaseEquilibrium<E, 2> {
 
     fn successive_substitution(
         &mut self,
-        feed_state: &State<E>,
+        feed_state: &State<I, R>,
         iterations: usize,
         iter: &mut usize,
         k_vec: &mut Option<&mut Array2<f64>>,
@@ -283,7 +283,7 @@ impl<E: EquationOfState> PhaseEquilibrium<E, 2> {
         Ok(false)
     }
 
-    fn update_states(&mut self, feed_state: &State<E>, k: &Array1<f64>) -> EosResult<()> {
+    fn update_states(&mut self, feed_state: &State<I, R>, k: &Array1<f64>) -> EosResult<()> {
         // calculate vapor phase fraction using Rachford-Rice algorithm
         let mut beta = self.vapor_phase_fraction();
         beta = rachford_rice(&feed_state.molefracs, k, Some(beta))?;
@@ -295,7 +295,7 @@ impl<E: EquationOfState> PhaseEquilibrium<E, 2> {
         Ok(())
     }
 
-    fn vle_init_stability(feed_state: &State<E>) -> EosResult<Self> {
+    fn vle_init_stability(feed_state: &State<I, R>) -> EosResult<Self> {
         let mut stable_states = feed_state.stability_analysis(SolverOptions::default())?;
         let state1 = stable_states.pop();
         let state2 = stable_states.pop();

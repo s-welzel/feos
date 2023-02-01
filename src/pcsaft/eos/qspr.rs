@@ -1,5 +1,7 @@
 use super::PcSaftParameters;
-use feos_core::IdealGasContributionDual;
+use feos_core::equation_of_state::{DeBroglieWavelength, DeBroglieWavelengthDual};
+use feos_core::parameter::Parameter;
+use feos_core::IdealGas;
 use ndarray::Array1;
 use num_dual::*;
 use std::fmt;
@@ -65,13 +67,42 @@ const AP_400: [f64; 6] = [
 
 #[allow(clippy::upper_case_acronyms)]
 pub struct QSPR {
-    pub parameters: Arc<PcSaftParameters>,
+    parameters: Arc<PcSaftParameters>,
+    de_broglie: Box<dyn DeBroglieWavelength>,
 }
 
-impl<D: DualNum<f64>> IdealGasContributionDual<D> for QSPR {
-    fn de_broglie_wavelength(&self, temperature: D, components: usize) -> Array1<D> {
-        let (c_300, c_400) = match self.parameters.association.assoc_comp.len() {
-            0 => match self.parameters.ndipole + self.parameters.nquadpole {
+impl fmt::Display for QSPR {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Ideal gas (QSPR)")
+    }
+}
+
+impl IdealGas for QSPR {
+    fn components(&self) -> usize {
+        self.parameters.sigma.len()
+    }
+
+    fn subset(&self, component_list: &[usize]) -> Self {
+        let parameters = Arc::new(self.parameters.subset(component_list));
+        Self {
+            parameters: parameters.clone(),
+            de_broglie: Box::new(QSPRDeBroglie(parameters)),
+        }
+    }
+
+    fn de_broglie_wavelength(&self) -> &Box<dyn DeBroglieWavelength> {
+        &self.de_broglie
+    }
+}
+
+#[allow(clippy::upper_case_acronyms)]
+pub struct QSPRDeBroglie(pub Arc<PcSaftParameters>);
+
+impl<D: DualNum<f64>> DeBroglieWavelengthDual<D> for QSPRDeBroglie {
+    fn evaluate(&self, temperature: D) -> Array1<D> {
+        let components = self.0.sigma.len();
+        let (c_300, c_400) = match self.0.association.assoc_comp.len() {
+            0 => match self.0.ndipole + self.0.nquadpole {
                 0 => (NA_NP_300, NA_NP_400),
                 _ => (NA_P_300, NA_P_400),
             },
@@ -79,20 +110,20 @@ impl<D: DualNum<f64>> IdealGasContributionDual<D> for QSPR {
         };
 
         Array1::from_shape_fn(components, |i| {
-            let epsilon_kt = temperature.recip() * self.parameters.epsilon_k[i];
-            let sigma3 = self.parameters.sigma[i].powi(3);
+            let epsilon_kt = temperature.recip() * self.0.epsilon_k[i];
+            let sigma3 = self.0.sigma[i].powi(3);
 
-            let p1 = epsilon_kt * self.parameters.m[i];
-            let p2 = sigma3 * self.parameters.m[i];
+            let p1 = epsilon_kt * self.0.m[i];
+            let p2 = sigma3 * self.0.m[i];
             let p3 = epsilon_kt * p2;
-            let p4 = self.parameters.pure_records[i]
+            let p4 = self.0.pure_records[i]
                 .model_record
                 .association_record
                 .as_ref()
                 .map_or(D::zero(), |a| {
                     (temperature.recip() * a.epsilon_k_ab).exp_m1() * p2 * sigma3 * a.kappa_ab
                 });
-            let p5 = p2 * self.parameters.q[i];
+            let p5 = p2 * self.0.q[i];
             let p6 = 1.0;
 
             let icpc300 = (p1 * c_300[0] / T300
@@ -124,7 +155,7 @@ impl<D: DualNum<f64>> IdealGasContributionDual<D> for QSPR {
     }
 }
 
-impl fmt::Display for QSPR {
+impl fmt::Display for QSPRDeBroglie {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Ideal gas (QSPR)")
     }

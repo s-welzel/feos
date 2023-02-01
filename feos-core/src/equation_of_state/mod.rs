@@ -1,7 +1,9 @@
-
 use crate::{EosError, EosResult, EosUnit, StateHD};
 use ndarray::{Array, Array1};
-use num_dual::DualNum;
+use num_dual::{
+    Dual3, Dual3_64, Dual64, DualNum, HyperDual, HyperDual64,
+};
+use num_traits::{One, Zero};
 use quantity::si::{SIArray1, SINumber, SIUnit, MOL};
 
 pub mod debroglie;
@@ -13,6 +15,7 @@ pub use ideal_gas::{DefaultIdealGas, IdealGas};
 pub use residual::Residual;
 
 pub use self::debroglie::{DeBroglieWavelength, DeBroglieWavelengthDual};
+
 /// Molar weight of all components.
 ///
 /// The trait is required to be able to calculate (mass)
@@ -21,7 +24,7 @@ pub trait MolarWeight {
     fn molar_weight(&self) -> SIArray1;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct EquationOfState<I: IdealGas, R: Residual> {
     pub ideal_gas: I,
     pub residual: R,
@@ -102,6 +105,73 @@ impl<I: IdealGas, R: Residual> EquationOfState<I, R> {
         dyn DeBroglieWavelength: DeBroglieWavelengthDual<D>,
     {
         self.ideal_gas.helmholtz_energy(state)
+    }
+
+    /// Calculate the second virial coefficient $B(T)$
+    pub fn second_virial_coefficient(
+        &self,
+        temperature: SINumber,
+        moles: Option<&SIArray1>,
+    ) -> EosResult<SINumber> {
+        let mr = self.validate_moles(moles)?;
+        let x = mr.to_reduced(mr.sum())?;
+        let mut rho = HyperDual64::zero();
+        rho.eps1[0] = 1.0;
+        rho.eps2[0] = 1.0;
+        let t = HyperDual64::from(temperature.to_reduced(SIUnit::reference_temperature())?);
+        let s = StateHD::new_virial(t, rho, x);
+        Ok(self.evaluate_residual(&s).eps1eps2[(0, 0)] * 0.5 / SIUnit::reference_density())
+    }
+
+    /// Calculate the third virial coefficient $C(T)$
+    pub fn third_virial_coefficient(
+        &self,
+        temperature: SINumber,
+        moles: Option<&SIArray1>,
+    ) -> EosResult<SINumber> {
+        let mr = self.validate_moles(moles)?;
+        let x = mr.to_reduced(mr.sum())?;
+        let rho = Dual3_64::zero().derive();
+        let t = Dual3_64::from(temperature.to_reduced(SIUnit::reference_temperature())?);
+        let s = StateHD::new_virial(t, rho, x);
+        Ok(self.evaluate_residual(&s).v3 / 3.0 / SIUnit::reference_density().powi(2))
+    }
+
+    /// Calculate the temperature derivative of the second virial coefficient $B'(T)$
+    pub fn second_virial_coefficient_temperature_derivative(
+        &self,
+        temperature: SINumber,
+        moles: Option<&SIArray1>,
+    ) -> EosResult<SINumber> {
+        let mr = self.validate_moles(moles)?;
+        let x = mr.to_reduced(mr.sum())?;
+        let mut rho = HyperDual::zero();
+        rho.eps1[0] = Dual64::one();
+        rho.eps2[0] = Dual64::one();
+        let t = HyperDual::from_re(
+            Dual64::from(temperature.to_reduced(SIUnit::reference_temperature())?).derive(),
+        );
+        let s = StateHD::new_virial(t, rho, x);
+        Ok(self.evaluate_residual(&s).eps1eps2[(0, 0)].eps[0] * 0.5
+            / (SIUnit::reference_density() * SIUnit::reference_temperature()))
+    }
+
+    /// Calculate the temperature derivative of the third virial coefficient $C'(T)$
+    pub fn third_virial_coefficient_temperature_derivative(
+        &self,
+        temperature: SINumber,
+        moles: Option<&SIArray1>,
+    ) -> EosResult<SINumber> {
+        let mr = self.validate_moles(moles)?;
+        let x = mr.to_reduced(mr.sum())?;
+        let rho = Dual3::zero().derive();
+        let t = Dual3::from_re(
+            Dual64::from(temperature.to_reduced(SIUnit::reference_temperature())?).derive(),
+        );
+        let s = StateHD::new_virial(t, rho, x);
+        Ok(self.evaluate_residual(&s).v3.eps[0]
+            / 3.0
+            / (SIUnit::reference_density().powi(2) * SIUnit::reference_temperature()))
     }
 }
 

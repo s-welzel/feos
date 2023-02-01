@@ -74,7 +74,7 @@ impl<I: IdealGas, R: Residual> PhaseDiagram<I, R, 2> {
 }
 
 #[cfg(feature = "rayon")]
-impl<I: IdealGas, R: Residual> PhaseDiagram<E, 2> {
+impl<I: IdealGas, R: Residual> PhaseDiagram<I, R, 2> {
     fn solve_temperatures(
         eos: &Arc<EquationOfState<I, R>>,
         temperatures: ArrayView1<f64>,

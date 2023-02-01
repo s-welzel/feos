@@ -119,7 +119,6 @@ impl<D: DualNum<f64>> StateHD<D> {
 /// + [State constructors](#state-constructors)
 /// + [Stability analysis](#stability-analysis)
 /// + [Flash calculations](#flash-calculations)
-#[derive(Debug)]
 pub struct State<I: IdealGas, R: Residual> {
     /// Equation of state
     pub eos: Arc<EquationOfState<I, R>>,

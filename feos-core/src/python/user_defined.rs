@@ -1,4 +1,5 @@
-use crate::{EquationOfState, HelmholtzEnergy, HelmholtzEnergyDual, MolarWeight, StateHD};
+use crate::{HelmholtzEnergy, HelmholtzEnergyDual, MolarWeight, StateHD};
+use crate::equation_of_state::{Residual, IdealGas, DeBroglieWavelength, DeBroglieWavelengthDual};
 use ndarray::Array1;
 use num_dual::*;
 use numpy::convert::IntoPyArray;
@@ -10,14 +11,26 @@ use quantity::si::{SIArray1};
 use std::fmt;
 
 struct PyHelmholtzEnergy(Py<PyAny>);
+struct PyDeBroglieWavelength(Py<PyAny>);
+
+pub struct PyIdealGas {
+    obj: Py<PyAny>,
+    de_broglie: Box<dyn DeBroglieWavelength>,
+}
 
 /// Struct containing pointer to Python Class that implements Helmholtz energy.
-pub struct PyEoSObj {
+pub struct PyResidual {
     obj: Py<PyAny>,
     contributions: Vec<Box<dyn HelmholtzEnergy>>,
 }
 
-impl PyEoSObj {
+impl fmt::Display for PyResidual {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Pythonh")
+    }
+}
+
+impl PyResidual {
     pub fn new(obj: Py<PyAny>) -> PyResult<Self> {
         Python::with_gil(|py| {
             let attr = obj.as_ref(py).hasattr("components")?;
@@ -48,7 +61,7 @@ impl PyEoSObj {
     }
 }
 
-impl MolarWeight for PyEoSObj {
+impl MolarWeight for PyResidual {
     fn molar_weight(&self) -> SIArray1 {
         Python::with_gil(|py| {
             let py_result = self.obj.as_ref(py).call_method0("molar_weight").unwrap();
@@ -63,7 +76,7 @@ impl MolarWeight for PyEoSObj {
     }
 }
 
-impl EquationOfState for PyEoSObj {
+impl Residual for PyResidual {
     fn components(&self) -> usize {
         Python::with_gil(|py| {
             let py_result = self.obj.as_ref(py).call_method0("components").unwrap();
@@ -99,7 +112,7 @@ impl EquationOfState for PyEoSObj {
         })
     }
 
-    fn residual(&self) -> &[Box<dyn HelmholtzEnergy>] {
+    fn contributions(&self) -> &[Box<dyn HelmholtzEnergy>] {
         &self.contributions
     }
 }

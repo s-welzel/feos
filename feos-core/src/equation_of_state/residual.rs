@@ -8,7 +8,7 @@ use std::fmt;
 use super::{HelmholtzEnergy, HelmholtzEnergyDual};
 
 /// A general equation of state.
-pub trait Residual: Send + Sync + fmt::Display {
+pub trait Residual: Send + Sync {
     /// Return the number of components of the equation of state.
     fn components(&self) -> usize;
 

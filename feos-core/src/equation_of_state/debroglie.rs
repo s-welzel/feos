@@ -19,7 +19,6 @@ pub trait DeBroglieWavelength:
     + DeBroglieWavelengthDual<Dual3<Dual64, f64>>
     + DeBroglieWavelengthDual<Dual3<DualVec64<2>, f64>>
     + DeBroglieWavelengthDual<Dual3<DualVec64<3>, f64>>
-    + fmt::Debug
     + fmt::Display
     + Send
     + Sync
@@ -39,7 +38,6 @@ impl<T> DeBroglieWavelength for T where
         + DeBroglieWavelengthDual<Dual3<Dual64, f64>>
         + DeBroglieWavelengthDual<Dual3<DualVec64<2>, f64>>
         + DeBroglieWavelengthDual<Dual3<DualVec64<3>, f64>>
-        + fmt::Debug
         + fmt::Display
         + Send
         + Sync

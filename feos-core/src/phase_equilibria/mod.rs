@@ -100,7 +100,6 @@ impl SolverOptions {
 /// + [Flash calculations](#flash-calculations)
 /// + [Pure component phase equilibria](#pure-component-phase-equilibria)
 /// + [Utility functions](#utility-functions)
-#[derive(Debug)]
 pub struct PhaseEquilibrium<I: IdealGas, R: Residual, const N: usize>([State<I, R>; N]);
 
 impl<I: IdealGas, R: Residual, const N: usize> Clone for PhaseEquilibrium<I, R, N> {

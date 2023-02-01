@@ -1,10 +1,10 @@
 #[macro_export]
 macro_rules! impl_phase_equilibrium {
-    ($eos:ty, $py_eos:ty) => {
+    ($ideal_gas:ty, $residual:ty, $py_eos:ty) => {
         /// A thermodynamic two phase equilibrium state.
         #[pyclass(name = "PhaseEquilibrium")]
         #[derive(Clone)]
-        pub struct PyPhaseEquilibrium(PhaseEquilibrium<$eos, 2>);
+        pub struct PyPhaseEquilibrium(PhaseEquilibrium<$ideal_gas, $residual, 2>);
 
         #[pymethods]
         impl PyPhaseEquilibrium {
@@ -326,7 +326,7 @@ macro_rules! impl_phase_equilibrium {
         /// A thermodynamic three phase equilibrium state.
         #[pyclass(name = "ThreePhaseEquilibrium")]
         #[derive(Clone)]
-        struct PyThreePhaseEquilibrium(PhaseEquilibrium<$eos, 3>);
+        struct PyThreePhaseEquilibrium(PhaseEquilibrium<$ideal_gas, $residual, 3>);
 
         #[pymethods]
         impl PyPhaseEquilibrium {
@@ -469,7 +469,7 @@ macro_rules! impl_phase_equilibrium {
         /// -------
         /// PhaseDiagram : the resulting phase diagram
         #[pyclass(name = "PhaseDiagram")]
-        pub struct PyPhaseDiagram(PhaseDiagram<$eos, 2>);
+        pub struct PyPhaseDiagram(PhaseDiagram<$ideal_gas, $residual, 2>);
 
         #[pymethods]
         impl PyPhaseDiagram {
@@ -917,7 +917,7 @@ macro_rules! impl_phase_equilibrium {
 
         /// Phase diagram for a binary mixture exhibiting a heteroazeotrope.
         #[pyclass(name = "PhaseDiagramHetero")]
-        pub struct PyPhaseDiagramHetero(PhaseDiagramHetero<$eos>);
+        pub struct PyPhaseDiagramHetero(PhaseDiagramHetero<$ideal_gas, $residual>);
 
         #[pymethods]
         impl PyPhaseDiagram {

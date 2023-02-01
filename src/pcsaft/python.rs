@@ -123,8 +123,8 @@ impl PyPcSaftRecord {
 
 impl_json_handling!(PyPcSaftRecord);
 
-impl_pure_record!(PcSaftRecord, PyPcSaftRecord, JobackRecord, PyJobackRecord);
-impl_segment_record!(PcSaftRecord, PyPcSaftRecord, JobackRecord, PyJobackRecord);
+impl_pure_record!(PcSaftRecord, PyPcSaftRecord);
+impl_segment_record!(PcSaftRecord, PyPcSaftRecord);
 
 #[pyclass(name = "PcSaftBinaryRecord")]
 #[pyo3(

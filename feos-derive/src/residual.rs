@@ -84,7 +84,7 @@ fn impl_molar_weight(
         if implement("molar_weight", v, &OPT_IMPLS)? {
             let name = &v.ident;
             molar_weight.push(quote! {
-                Self::#name(eos) => eos.molar_weight()
+                Self::#name(residual) => residual.molar_weight()
             });
         }
     }
@@ -99,6 +99,7 @@ fn impl_molar_weight(
         }
     })
 }
+
 
 // fn impl_entropy_scaling(
 //     variants: &syn::punctuated::Punctuated<syn::Variant, syn::token::Comma>,

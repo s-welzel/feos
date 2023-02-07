@@ -12,7 +12,7 @@ use feos_core::cubic::PengRobinson;
 use feos_core::equation_of_state::{DeBroglieWavelength, IdealGas, Residual, DefaultIdealGas};
 use feos_core::joback::Joback;
 #[cfg(feature = "python")]
-use feos_core::python::user_defined::PyResidual;
+use feos_core::python::user_defined::{PyIdealGas, PyResidual};
 use feos_core::*;
 use feos_derive::{IdealGasModel, ResidualModel};
 use ndarray::Array1;
@@ -34,9 +34,9 @@ pub enum ResidualModel {
     GcPcSaft(GcPcSaft),
     #[implement(molar_weight)]
     PengRobinson(PengRobinson),
-    // #[cfg(feature = "python")]
-    // #[implement(molar_weight)]
-    // Python(PyEosObj),
+    #[cfg(feature = "python")]
+    #[implement(molar_weight)]
+    Python(PyResidual),
     #[cfg(feature = "saftvrqmie")]
     #[implement(molar_weight)]
     SaftVRQMie(SaftVRQMie),
@@ -51,6 +51,8 @@ pub enum ResidualModel {
 pub enum IdealGasModel {
     DefaultIdealGas(DefaultIdealGas),
     Joback(Joback),
+    #[cfg(feature = "python")]
+    Python(PyIdealGas),
 }
 
 // impl fmt::Display for IdealGasModel {

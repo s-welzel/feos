@@ -44,9 +44,10 @@ use quantity::si::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::fmt::Write;
 
 #[pyclass(name = "Residual")]
-pub struct PyResidualModel(RefCell<Option<ResidualModel>>);
+pub struct PyResidualModel(Arc<ResidualModel>);
 
 #[pymethods]
 impl PyResidualModel {
@@ -93,7 +94,7 @@ impl PyResidualModel {
             parameters.0,
             options,
         );
-        Self(RefCell::new(Some(ResidualModel::PcSaft(pcsaft))))
+        Self(Arc::new(ResidualModel::PcSaft(pcsaft)))
     }
 }
 
@@ -104,12 +105,11 @@ pub struct PyEquationOfState(pub Arc<EquationOfState<IdealGasModel, ResidualMode
 
 #[pymethods]
 impl PyEquationOfState {
-
     #[new]
     pub fn new(residual: &PyResidualModel) -> Self {
-        let res = residual.0.take().unwrap();
+        let res = residual.0.clone();
         let components = res.components();
-        Self(Arc::new(EquationOfState::new(IdealGasModel::DefaultIdealGas(DefaultIdealGas::new(components)), res)))
+        Self(Arc::new(EquationOfState::new(Arc::new(IdealGasModel::DefaultIdealGas(DefaultIdealGas::new(components))), res)))
     }
 
     /// PC-SAFT equation of state.
@@ -153,12 +153,13 @@ impl PyEquationOfState {
             tol_cross_assoc,
             dq_variant,
         };
-        let pcsaft = PcSaft::with_options(
+        let pcsaft = Arc::new(ResidualModel::PcSaft(PcSaft::with_options(
             parameters.0,
             options,
-        );
+        )));
         let components = pcsaft.components();
-        Self(Arc::new(EquationOfState::new(IdealGasModel::DefaultIdealGas(DefaultIdealGas::new(components)), ResidualModel::PcSaft(pcsaft))))
+        let ideal_gas = Arc::new(IdealGasModel::DefaultIdealGas(DefaultIdealGas::new(components)));
+        Self(Arc::new(EquationOfState::new(ideal_gas, pcsaft)))
     }
 
     /// (heterosegmented) group contribution PC-SAFT equation of state.
@@ -216,11 +217,12 @@ impl PyEquationOfState {
     ///     states.
     #[staticmethod]
     pub fn peng_robinson(parameters: PyPengRobinsonParameters) -> Self {
-        let residual = PengRobinson::new(
+        let residual = Arc::new(ResidualModel::PengRobinson(PengRobinson::new(
             parameters.0,
-        );
+        )));
         let components = residual.components();
-        Self(Arc::new(EquationOfState::new(IdealGasModel::DefaultIdealGas(DefaultIdealGas::new(components)), ResidualModel::PengRobinson(residual))))
+        let ideal_gas = Arc::new(IdealGasModel::DefaultIdealGas(DefaultIdealGas::new(components)));
+        Self(Arc::new(EquationOfState::new(ideal_gas, residual)))
     }
 
     /// Equation of state from a Python class.
@@ -238,15 +240,34 @@ impl PyEquationOfState {
     /// -------
     /// EquationOfState
     #[staticmethod]
-    fn python(residual: Py<PyAny>, ideal_gas: Option<Py<PyAny>>) -> PyResult<Self> {
-        let residual = ResidualModel::Python(PyResidual::new(residual)?);
+    fn python_residual(residual: Py<PyAny>, ideal_gas: Option<Py<PyAny>>) -> PyResult<Self> {
+        let residual = Arc::new(ResidualModel::Python(PyResidual::new(residual)?));
         let components = residual.components();
         let ideal_gas = if let Some(ig) = ideal_gas {
-            IdealGasModel::Python(PyIdealGas::new(ig)?)
+            Arc::new(IdealGasModel::Python(PyIdealGas::new(ig)?))
         } else {
-            IdealGasModel::DefaultIdealGas(DefaultIdealGas::new(components))
+            Arc::new(IdealGasModel::DefaultIdealGas(DefaultIdealGas::new(components)))
         };
         Ok(Self(Arc::new(EquationOfState::new(ideal_gas, residual))))
+    }
+
+    /// Equation of state from a Python class.
+    ///
+    /// Parameters
+    /// ----------
+    /// residual : Class
+    ///     A python class implementing the necessary methods
+    ///     to be used as a residual model.
+    /// ideal_gas : Class, optional
+    ///     A python class implementing the necessary methods
+    ///     to be used as a ideal gas model.
+    ///
+    /// Returns
+    /// -------
+    /// EquationOfState
+    fn python_ideal_gas(&self, ideal_gas: Py<PyAny>) -> PyResult<Self> {
+        let ig = Arc::new(IdealGasModel::Python(PyIdealGas::new(ideal_gas)?));
+        Ok(Self(Arc::new(EquationOfState::new(ig, self.0.residual.clone()))))
     }
 
     /// PeTS equation of state.
@@ -357,11 +378,22 @@ impl PyEquationOfState {
         ))))
     }
 
-    // fn joback(&self, parameters: Vec<PyJobackRecord>) -> Self {
-    //     let records = Arc::new(parameters.iter().map(|p| p.0.clone()).collect());
-    //     let ideal_gas = IdealGasModel::Joback(Joback::new(records));
-    //     Self(Arc::new(EquationOfState::new(ideal_gas, self.0.residual)))
-    // }
+    fn joback(&self, parameters: Vec<PyJobackRecord>) -> Self {
+        let records = Arc::new(parameters.iter().map(|p| p.0.clone()).collect());
+        let ideal_gas = Arc::new(IdealGasModel::Joback(Joback::new(records)));
+        Self(Arc::new(EquationOfState::new(ideal_gas, self.0.residual.clone())))
+    }
+
+    fn __repr__(&self) -> PyResult<String> {
+        Ok(format!("Equation of state\nIdeal Gas Model: {}\nResidual Model : {}", self.0.ideal_gas.to_string(), self.0.residual.to_string()))
+    }
+
+    fn _repr_markdown_(&self) -> PyResult<String> {
+        let mut table = "|Model|Name|\n|:--|:--|\n".to_string();
+        _ = writeln!(table, "|Ideal Gas|{}|", self.0.ideal_gas.to_string());
+        _ = writeln!(table, "|Residual|{}|", self.0.residual.to_string());
+        Ok(table)
+    }
 }
 
 impl_equation_of_state!(PyEquationOfState);

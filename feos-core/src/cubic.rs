@@ -297,8 +297,8 @@ mod tests {
         let tc = propane.model_record.tc;
         let pc = propane.model_record.pc;
         let parameters = PengRobinsonParameters::from_records(vec![propane], Array2::zeros((1, 1)));
-        let residual = PengRobinson::new(Arc::new(parameters));
-        let ideal_gas = DefaultIdealGas::new(1);
+        let residual = Arc::new(PengRobinson::new(Arc::new(parameters)));
+        let ideal_gas = Arc::new(DefaultIdealGas::new(1));
         let eos = Arc::new(EquationOfState::new(ideal_gas, residual));
 
         let options = SolverOptions::new().verbosity(Verbosity::Iter);

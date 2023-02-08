@@ -338,7 +338,7 @@ mod tests {
         let t = 200.0 * KELVIN;
         let v = 1e-3 * METER.powi(3);
         let n = arr1(&[1.0]) * MOL;
-        let pcsaft = PcSaft::new(propane_parameters());
+        let pcsaft = Arc::new(PcSaft::new(propane_parameters()));
         let eos = Arc::new(EquationOfState::new_default_ideal_gas(pcsaft));
         let s = State::new_nvt(&eos, t, v, &n).unwrap();
         let p_ig = s.total_moles * RGAS * t / v;
@@ -355,7 +355,7 @@ mod tests {
         let t = 200.0 * KELVIN;
         let v = 1e-3 * METER.powi(3);
         let n = arr1(&[1.0]) * MOL;
-        let pcsaft = PcSaft::new(propane_parameters());
+        let pcsaft = Arc::new(PcSaft::new(propane_parameters()));
         let eos = Arc::new(EquationOfState::new_default_ideal_gas(pcsaft));
         let s = State::new_nvt(&eos, t, v, &n).unwrap();
         let p_ig = s.total_moles * RGAS * t / v;
@@ -424,7 +424,7 @@ mod tests {
 
     #[test]
     fn new_tpn() {
-        let pcsaft = PcSaft::new(propane_parameters());
+        let pcsaft = Arc::new(PcSaft::new(propane_parameters()));
         let eos = Arc::new(EquationOfState::new_default_ideal_gas(pcsaft));
         let t = 300.0 * KELVIN;
         let p = BAR;
@@ -441,7 +441,7 @@ mod tests {
     #[test]
     fn vle_pure() {
         let t = 300.0 * KELVIN;
-        let pcsaft = PcSaft::new(propane_parameters());
+        let pcsaft = Arc::new(PcSaft::new(propane_parameters()));
         let eos = Arc::new(EquationOfState::new_default_ideal_gas(pcsaft));
         let vle = PhaseEquilibrium::pure(&eos, t, None, Default::default());
         if let Ok(v) = vle {
@@ -456,7 +456,7 @@ mod tests {
     #[test]
     fn critical_point() {
         let t = 300.0 * KELVIN;
-        let pcsaft = PcSaft::new(propane_parameters());
+        let pcsaft = Arc::new(PcSaft::new(propane_parameters()));
         let eos = Arc::new(EquationOfState::new_default_ideal_gas(pcsaft));
         let cp = State::critical_point(&eos, None, Some(t), Default::default());
         if let Ok(v) = cp {
@@ -469,7 +469,7 @@ mod tests {
         let t = 300.0 * KELVIN;
         let p = BAR;
         let m = arr1(&[1.0]) * MOL;
-        let pcsaft = PcSaft::new(propane_parameters());
+        let pcsaft = Arc::new(PcSaft::new(propane_parameters()));
         let eos = Arc::new(EquationOfState::new_default_ideal_gas(pcsaft));
         let s = State::new_npt(&eos, t, p, &m, DensityInitialization::None).unwrap();
         assert_relative_eq!(
@@ -481,14 +481,14 @@ mod tests {
 
     #[test]
     fn mix_single() {
-        let e1 = Arc::new(EquationOfState::new_default_ideal_gas(PcSaft::new(
-            propane_parameters(),
+        let e1 = Arc::new(EquationOfState::new_default_ideal_gas(Arc::new(
+            PcSaft::new(propane_parameters()),
         )));
-        let e2 = Arc::new(EquationOfState::new_default_ideal_gas(PcSaft::new(
-            butane_parameters(),
+        let e2 = Arc::new(EquationOfState::new_default_ideal_gas(Arc::new(
+            PcSaft::new(butane_parameters()),
         )));
-        let e12 = Arc::new(EquationOfState::new_default_ideal_gas(PcSaft::new(
-            propane_butane_parameters(),
+        let e12 = Arc::new(EquationOfState::new_default_ideal_gas(Arc::new(
+            PcSaft::new(propane_butane_parameters()),
         )));
         let t = 300.0 * KELVIN;
         let v = 0.02456883872966545 * METER.powi(3);

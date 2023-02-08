@@ -1,10 +1,9 @@
 use crate::{EosError, EosResult, EosUnit, StateHD};
 use ndarray::{Array, Array1};
-use num_dual::{
-    Dual3, Dual3_64, Dual64, DualNum, HyperDual, HyperDual64,
-};
+use num_dual::{Dual3, Dual3_64, Dual64, DualNum, HyperDual, HyperDual64};
 use num_traits::{One, Zero};
 use quantity::si::{SIArray1, SINumber, SIUnit, MOL};
+use std::sync::Arc;
 
 pub mod debroglie;
 pub mod helmholtz_energy;
@@ -26,20 +25,20 @@ pub trait MolarWeight {
 
 #[derive(Clone)]
 pub struct EquationOfState<I: IdealGas, R: Residual> {
-    pub ideal_gas: I,
-    pub residual: R,
+    pub ideal_gas: Arc<I>,
+    pub residual: Arc<R>,
     components: usize,
 }
 
 impl<R: Residual> EquationOfState<DefaultIdealGas, R> {
-    pub fn new_default_ideal_gas(residual: R) -> Self {
+    pub fn new_default_ideal_gas(residual: Arc<R>) -> Self {
         let components = residual.components();
-        Self::new(DefaultIdealGas::new(components), residual)
+        Self::new(Arc::new(DefaultIdealGas::new(components)), residual)
     }
 }
 
 impl<I: IdealGas, R: Residual> EquationOfState<I, R> {
-    pub fn new(ideal_gas: I, residual: R) -> Self {
+    pub fn new(ideal_gas: Arc<I>, residual: Arc<R>) -> Self {
         assert_eq!(residual.components(), ideal_gas.components());
         let components = residual.components();
         Self {
@@ -55,8 +54,8 @@ impl<I: IdealGas, R: Residual> EquationOfState<I, R> {
 
     pub fn subset(&self, component_list: &[usize]) -> Self {
         Self::new(
-            self.ideal_gas.subset(component_list),
-            self.residual.subset(component_list),
+            Arc::new(self.ideal_gas.subset(component_list)),
+            Arc::new(self.residual.subset(component_list)),
         )
     }
 

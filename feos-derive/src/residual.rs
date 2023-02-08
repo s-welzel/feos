@@ -48,6 +48,12 @@ fn impl_residual(
             Self::#name(residual) => residual.contributions()
         }
     });
+    let display = variants.iter().map(|v| {
+        let name = &v.ident;
+        quote! {
+            Self::#name(residual) => write!(f, "{}", residual.to_string())
+        }
+    }); 
 
     quote! {
         impl Residual for ResidualModel {
@@ -69,6 +75,14 @@ fn impl_residual(
             fn contributions(&self) -> &[Box<dyn HelmholtzEnergy>] {
                 match self {
                     #(#contributions,)*
+                }
+            }
+        }
+
+        impl fmt::Display for ResidualModel {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                match self {
+                    #(#display,)*
                 }
             }
         }
@@ -99,7 +113,6 @@ fn impl_molar_weight(
         }
     })
 }
-
 
 // fn impl_entropy_scaling(
 //     variants: &syn::punctuated::Punctuated<syn::Variant, syn::token::Comma>,

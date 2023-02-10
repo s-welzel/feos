@@ -1,9 +1,11 @@
-use crate::equation_of_state::{DeBroglieWavelength, DeBroglieWavelengthDual, IdealGas, Residual};
-use crate::{HelmholtzEnergy, HelmholtzEnergyDual, MolarWeight, StateHD};
-use ndarray::{arr1, Array1, Axis};
+use crate::{
+    DeBroglieWavelength, DeBroglieWavelengthDual, HelmholtzEnergy, HelmholtzEnergyDual, IdealGas,
+    MolarWeight, Residual, StateHD,
+};
+use ndarray::{arr1, Array1};
 use num_dual::*;
 use numpy::convert::IntoPyArray;
-use numpy::{PyArray, PyArray1, PyReadonlyArray1, PyReadonlyArrayDyn};
+use numpy::{PyArray, PyReadonlyArray1, PyReadonlyArrayDyn};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use quantity::python::PySIArray1;

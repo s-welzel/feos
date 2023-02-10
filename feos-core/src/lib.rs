@@ -33,7 +33,8 @@ mod errors;
 pub mod joback;
 pub mod parameter;
 pub use equation_of_state::{
-    HelmholtzEnergy, HelmholtzEnergyDual, IdealGas, MolarWeight,
+    DeBroglieWavelength, DeBroglieWavelengthDual, EquationOfState, HelmholtzEnergy,
+    HelmholtzEnergyDual, IdealGas, MolarWeight, Residual,
 };
 mod phase_equilibria;
 mod state;

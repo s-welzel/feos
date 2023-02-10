@@ -27,7 +27,7 @@ use crate::uvtheory::python::PyUVParameters;
 use crate::uvtheory::{Perturbation, UVTheory, UVTheoryOptions, VirialOrder};
 
 use feos_core::cubic::PengRobinson;
-use feos_core::equation_of_state::{EquationOfState, Residual, DefaultIdealGas, MolarWeight};
+use feos_core::equation_of_state::{EquationOfState, Residual, DefaultIdealGas};
 use feos_core::joback::Joback;
 use feos_core::python::cubic::PyPengRobinsonParameters;
 use feos_core::python::joback::PyJobackRecord;
@@ -41,62 +41,9 @@ use pyo3::prelude::*;
 use pyo3::wrap_pymodule;
 use quantity::python::{PySINumber, PySIArray1, PySIArray2};
 use quantity::si::*;
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::fmt::Write;
-
-#[pyclass(name = "Residual")]
-pub struct PyResidualModel(Arc<ResidualModel>);
-
-#[pymethods]
-impl PyResidualModel {
-    /// PC-SAFT equation of state.
-    ///
-    /// Parameters
-    /// ----------
-    /// parameters : PcSaftParameters
-    ///     The parameters of the PC-SAFT equation of state to use.
-    /// max_eta : float, optional
-    ///     Maximum packing fraction. Defaults to 0.5.
-    /// max_iter_cross_assoc : unsigned integer, optional
-    ///     Maximum number of iterations for cross association. Defaults to 50.
-    /// tol_cross_assoc : float
-    ///     Tolerance for convergence of cross association. Defaults to 1e-10.
-    /// dq_variant : DQVariants, optional
-    ///     Combination rule used in the dipole/quadrupole term. Defaults to 'DQVariants.DQ35'
-    ///
-    /// Returns
-    /// -------
-    /// EquationOfState
-    ///     The PC-SAFT equation of state that can be used to compute thermodynamic
-    ///     states.
-    #[cfg(feature = "pcsaft")]
-    #[staticmethod]
-    #[pyo3(
-        signature = (parameters, max_eta=0.5, max_iter_cross_assoc=50, tol_cross_assoc=1e-10, dq_variant=DQVariants::DQ35),
-        text_signature = "(parameters, max_eta=0.5, max_iter_cross_assoc=50, tol_cross_assoc=1e-10, dq_variant)"
-    )]
-    pub fn pcsaft(
-        parameters: PyPcSaftParameters,
-        max_eta: f64,
-        max_iter_cross_assoc: usize,
-        tol_cross_assoc: f64,
-        dq_variant: DQVariants,
-    ) -> Self {
-        let options = PcSaftOptions {
-            max_eta,
-            max_iter_cross_assoc,
-            tol_cross_assoc,
-            dq_variant,
-        };
-        let pcsaft = PcSaft::with_options(
-            parameters.0,
-            options,
-        );
-        Self(Arc::new(ResidualModel::PcSaft(pcsaft)))
-    }
-}
 
 /// Collection of equations of state.
 #[pyclass(name = "EquationOfState")]
@@ -105,13 +52,6 @@ pub struct PyEquationOfState(pub Arc<EquationOfState<IdealGasModel, ResidualMode
 
 #[pymethods]
 impl PyEquationOfState {
-    #[new]
-    pub fn new(residual: &PyResidualModel) -> Self {
-        let res = residual.0.clone();
-        let components = res.components();
-        Self(Arc::new(EquationOfState::new(Arc::new(IdealGasModel::DefaultIdealGas(DefaultIdealGas::new(components))), res)))
-    }
-
     /// PC-SAFT equation of state.
     ///
     /// Parameters
@@ -197,10 +137,13 @@ impl PyEquationOfState {
             max_iter_cross_assoc,
             tol_cross_assoc,
         };
-        Self(Arc::new(ResidualModel::GcPcSaft(GcPcSaft::with_options(
+        let residual = Arc::new(ResidualModel::GcPcSaft(GcPcSaft::with_options(
             parameters.0,
             options,
-        ))))
+        )));
+        let components = residual.components();
+        let ideal_gas = Arc::new(IdealGasModel::DefaultIdealGas(DefaultIdealGas::new(components)));
+        Self(Arc::new(EquationOfState::new(ideal_gas, residual)))
     }
 
     /// Peng-Robinson equation of state.
@@ -289,10 +232,13 @@ impl PyEquationOfState {
     #[pyo3(signature = (parameters, max_eta=0.5), text_signature = "(parameters, max_eta=0.5)")]
     fn pets(parameters: PyPetsParameters, max_eta: f64) -> Self {
         let options = PetsOptions { max_eta };
-        Self(Arc::new(ResidualModel::Pets(Pets::with_options(
+        let residual = Arc::new(ResidualModel::Pets(Pets::with_options(
             parameters.0,
             options,
-        ))))
+        )));
+        let components = residual.components();
+        let ideal_gas = Arc::new(IdealGasModel::DefaultIdealGas(DefaultIdealGas::new(components)));
+        Self(Arc::new(EquationOfState::new(ideal_gas, residual)))
     }
 
     /// UV-Theory equation of state.
@@ -331,9 +277,13 @@ impl PyEquationOfState {
             perturbation,
             virial_order,
         };
-        Ok(Self(Arc::new(ResidualModel::UVTheory(
-            UVTheory::with_options(parameters.0, options)?,
-        ))))
+        let residual = Arc::new(ResidualModel::UVTheory(UVTheory::with_options(
+            parameters.0,
+            options,
+        )?));
+        let components = residual.components();
+        let ideal_gas = Arc::new(IdealGasModel::DefaultIdealGas(DefaultIdealGas::new(components)));
+        Ok(Self(Arc::new(EquationOfState::new(ideal_gas, residual))))
     }
 
     /// SAFT-VRQ Mie equation of state.
@@ -372,10 +322,13 @@ impl PyEquationOfState {
             fh_order,
             inc_nonadd_term,
         };
-        Self(Arc::new(ResidualModel::SaftVRQMie(SaftVRQMie::with_options(
+        let pcsaft = Arc::new(ResidualModel::SaftVRQMie(SaftVRQMie::with_options(
             parameters.0,
             options,
-        ))))
+        )));
+        let components = pcsaft.components();
+        let ideal_gas = Arc::new(IdealGasModel::DefaultIdealGas(DefaultIdealGas::new(components)));
+        Self(Arc::new(EquationOfState::new(ideal_gas, pcsaft)))
     }
 
     fn joback(&self, parameters: Vec<PyJobackRecord>) -> Self {
@@ -389,7 +342,7 @@ impl PyEquationOfState {
     }
 
     fn _repr_markdown_(&self) -> PyResult<String> {
-        let mut table = "|Model|Name|\n|:--|:--|\n".to_string();
+        let mut table = "||Model|\n|:--|:--|\n".to_string();
         _ = writeln!(table, "|Ideal Gas|{}|", self.0.ideal_gas.to_string());
         _ = writeln!(table, "|Residual|{}|", self.0.residual.to_string());
         Ok(table)
@@ -415,7 +368,6 @@ pub fn eos(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_class::<Verbosity>()?;
 
     m.add_class::<PyEquationOfState>()?;
-    m.add_class::<PyResidualModel>()?;
     m.add_class::<PyState>()?;
     m.add_class::<PyStateVec>()?;
     m.add_class::<PyPhaseDiagram>()?;

@@ -1,10 +1,10 @@
 use super::parameters::PcSaftParameters;
 use crate::association::Association;
 use crate::hard_sphere::HardSphere;
-use feos_core::equation_of_state::Residual;
-use feos_core::joback::Joback;
 use feos_core::parameter::Parameter;
-use feos_core::{Contributions, EosError, EosResult, HelmholtzEnergy, MolarWeight, State};
+use feos_core::{
+    Contributions, EosError, EosResult, HelmholtzEnergy, MolarWeight, Residual, State,
+};
 use ndarray::Array1;
 use quantity::si::*;
 use std::f64::consts::{FRAC_PI_6, PI};

@@ -1,11 +1,11 @@
 use crate::association::Association;
 use crate::hard_sphere::HardSphere;
-use feos_core::joback::Joback;
 use feos_core::parameter::ParameterHetero;
-use feos_core::{EquationOfState, HelmholtzEnergy, IdealGasContribution, MolarWeight};
+use feos_core::{HelmholtzEnergy, MolarWeight, Residual};
 use ndarray::Array1;
 use quantity::si::*;
 use std::f64::consts::FRAC_PI_6;
+use std::fmt;
 use std::sync::Arc;
 
 pub(crate) mod dispersion;
@@ -43,7 +43,6 @@ pub struct GcPcSaft {
     pub parameters: Arc<GcPcSaftEosParameters>,
     options: GcPcSaftOptions,
     contributions: Vec<Box<dyn HelmholtzEnergy>>,
-    joback: Joback,
 }
 
 impl GcPcSaft {
@@ -75,15 +74,11 @@ impl GcPcSaft {
             parameters: parameters.clone(),
             options,
             contributions,
-            joback: parameters.joback_records.clone().map_or_else(
-                || Joback::default(parameters.chemical_records.len()),
-                Joback::new,
-            ),
         }
     }
 }
 
-impl EquationOfState for GcPcSaft {
+impl Residual for GcPcSaft {
     fn components(&self) -> usize {
         self.parameters.molarweight.len()
     }
@@ -102,12 +97,14 @@ impl EquationOfState for GcPcSaft {
             / (FRAC_PI_6 * &p.m * p.sigma.mapv(|v| v.powi(3)) * moles_segments).sum()
     }
 
-    fn residual(&self) -> &[Box<dyn HelmholtzEnergy>] {
+    fn contributions(&self) -> &[Box<dyn HelmholtzEnergy>] {
         &self.contributions
     }
+}
 
-    fn ideal_gas(&self) -> &dyn IdealGasContribution {
-        &self.joback
+impl fmt::Display for GcPcSaft {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "GC-PC-SAFT")
     }
 }
 

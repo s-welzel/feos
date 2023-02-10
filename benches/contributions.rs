@@ -8,7 +8,8 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use feos::pcsaft::{PcSaft, PcSaftParameters};
 use feos_core::parameter::{IdentifierOption, Parameter};
-use feos_core::{DensityInitialization, Derivative, EquationOfState, State};
+use feos_core::{DensityInitialization, Derivative, State};
+use feos_core::equation_of_state::EquationOfState;
 use ndarray::arr1;
 use quantity::si::*;
 use std::sync::Arc;
@@ -71,7 +72,9 @@ fn pcsaft(c: &mut Criterion) {
     for comp1 in &[hexane, acetone, co2, ethanol] {
         for comp2 in [&heptane, &dme, &acetylene, &propanol] {
             let params = PcSaftParameters::new_binary(vec![comp1.clone(), comp2.clone()], None);
-            let eos = Arc::new(PcSaft::new(Arc::new(params)));
+            let eos = Arc::new(EquationOfState::new_default_ideal_gas(Arc::new(
+                PcSaft::new(Arc::new(params)),
+            )));
             let state = State::new_npt(&eos, t, p, &moles, DensityInitialization::Liquid).unwrap();
             let state_hd = state.derive1(Derivative::DT);
             let name1 = comp1.identifier.name.as_deref().unwrap();

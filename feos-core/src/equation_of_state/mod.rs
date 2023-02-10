@@ -24,7 +24,7 @@ pub trait MolarWeight {
 }
 
 #[derive(Clone)]
-pub struct EquationOfState<I: IdealGas, R: Residual> {
+pub struct EquationOfState<I, R> {
     pub ideal_gas: Arc<I>,
     pub residual: Arc<R>,
     components: usize,

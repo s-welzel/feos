@@ -147,12 +147,7 @@ impl PySaftVRQMieBinaryRecord {
 pub struct PySaftVRQMieParameters(pub Arc<SaftVRQMieParameters>);
 
 impl_json_handling!(PySaftVRQMieRecord);
-impl_pure_record!(
-    SaftVRQMieRecord,
-    PySaftVRQMieRecord,
-    JobackRecord,
-    PyJobackRecord
-);
+impl_pure_record!(SaftVRQMieRecord, PySaftVRQMieRecord);
 impl_binary_record!(SaftVRQMieBinaryRecord, PySaftVRQMieBinaryRecord);
 impl_parameter!(SaftVRQMieParameters, PySaftVRQMieParameters);
 

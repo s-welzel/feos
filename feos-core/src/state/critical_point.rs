@@ -1,5 +1,5 @@
 use super::{State, StateHD, TPSpec};
-use crate::equation_of_state::{EquationOfState, Residual};
+use crate::equation_of_state::{Model, Residual};
 use crate::errors::{EosError, EosResult};
 use crate::phase_equilibria::{SolverOptions, Verbosity};
 use crate::{DensityInitialization, EosUnit, IdealGas};
@@ -19,7 +19,7 @@ const TOL_CRIT_POINT: f64 = 1e-8;
 impl<I: IdealGas, R: Residual> State<I, R> {
     /// Calculate the pure component critical point of all components.
     pub fn critical_point_pure(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         initial_temperature: Option<SINumber>,
         options: SolverOptions,
     ) -> EosResult<Vec<Self>>
@@ -39,7 +39,7 @@ impl<I: IdealGas, R: Residual> State<I, R> {
     }
 
     pub fn critical_point_binary(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature_or_pressure: SINumber,
         initial_temperature: Option<SINumber>,
         initial_molefracs: Option<[f64; 2]>,
@@ -64,7 +64,7 @@ impl<I: IdealGas, R: Residual> State<I, R> {
 
     /// Calculate the critical point of a system for given moles.
     pub fn critical_point(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         moles: Option<&SIArray1>,
         initial_temperature: Option<SINumber>,
         options: SolverOptions,
@@ -91,7 +91,7 @@ impl<I: IdealGas, R: Residual> State<I, R> {
     }
 
     fn critical_point_hkm(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         moles: &SIArray1,
         initial_temperature: SINumber,
         options: SolverOptions,
@@ -176,7 +176,7 @@ impl<I: IdealGas, R: Residual> State<I, R> {
 
     /// Calculate the critical point of a binary system for given temperature.
     fn critical_point_binary_t(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature: SINumber,
         initial_molefracs: Option<[f64; 2]>,
         options: SolverOptions,
@@ -262,7 +262,7 @@ impl<I: IdealGas, R: Residual> State<I, R> {
 
     /// Calculate the critical point of a binary system for given pressure.
     fn critical_point_binary_p(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         pressure: SINumber,
         initial_temperature: Option<SINumber>,
         initial_molefracs: Option<[f64; 2]>,
@@ -362,7 +362,7 @@ impl<I: IdealGas, R: Residual> State<I, R> {
     }
 
     pub fn spinodal(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature: SINumber,
         moles: Option<&SIArray1>,
         options: SolverOptions,
@@ -391,7 +391,7 @@ impl<I: IdealGas, R: Residual> State<I, R> {
     }
 
     fn calculate_spinodal(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature: SINumber,
         moles: &SIArray1,
         density_initialization: DensityInitialization,
@@ -469,7 +469,7 @@ impl<I: IdealGas, R: Residual> State<I, R> {
 }
 
 fn critical_point_objective<I: IdealGas, R: Residual>(
-    eos: &Arc<EquationOfState<I, R>>,
+    eos: &Arc<Model<I, R>>,
     temperature: DualVec64<2>,
     density: DualVec64<2>,
     moles: &Array1<f64>,
@@ -509,7 +509,7 @@ fn critical_point_objective<I: IdealGas, R: Residual>(
 }
 
 fn critical_point_objective_t<I: IdealGas, R: Residual>(
-    eos: &Arc<EquationOfState<I, R>>,
+    eos: &Arc<Model<I, R>>,
     temperature: f64,
     density: StaticVec<DualVec64<2>, 2>,
 ) -> EosResult<StaticVec<DualVec64<2>, 2>> {
@@ -544,7 +544,7 @@ fn critical_point_objective_t<I: IdealGas, R: Residual>(
 }
 
 fn critical_point_objective_p<I: IdealGas, R: Residual>(
-    eos: &Arc<EquationOfState<I, R>>,
+    eos: &Arc<Model<I, R>>,
     pressure: f64,
     temperature: DualVec64<3>,
     density: StaticVec<DualVec64<3>, 2>,
@@ -591,7 +591,7 @@ fn critical_point_objective_p<I: IdealGas, R: Residual>(
 }
 
 fn spinodal_objective<I: IdealGas, R: Residual>(
-    eos: &Arc<EquationOfState<I, R>>,
+    eos: &Arc<Model<I, R>>,
     temperature: Dual64,
     density: Dual64,
     moles: &Array1<f64>,

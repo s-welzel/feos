@@ -14,12 +14,10 @@ use std::sync::Arc;
 pub(crate) mod dispersion;
 pub(crate) mod hard_chain;
 pub(crate) mod polar;
-mod qspr;
 use dispersion::Dispersion;
 use hard_chain::HardChain;
 pub use polar::DQVariants;
 use polar::{Dipole, DipoleQuadrupole, Quadrupole};
-use qspr::QSPRDeBroglie;
 
 /// Customization options for the PC-SAFT equation of state and functional.
 #[derive(Copy, Clone)]

@@ -1,4 +1,4 @@
-use crate::equation_of_state::{EquationOfState, Residual};
+use crate::equation_of_state::{Model, Residual};
 use crate::errors::{EosError, EosResult};
 use crate::state::{Contributions, DensityInitialization, State};
 use crate::{EosUnit, IdealGas};
@@ -197,7 +197,7 @@ impl<I: IdealGas, R: Residual> PhaseEquilibrium<I, R, 2> {
     }
 
     pub(super) fn new_npt(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature: SINumber,
         pressure: SINumber,
         vapor_moles: &SIArray1,

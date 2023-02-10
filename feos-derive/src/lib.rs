@@ -45,7 +45,7 @@ fn implement(name: &str, variant: &syn::Variant, opts: &[&'static str]) -> syn::
     implement
 }
 
-#[proc_macro_derive(IdealGasModel, attributes(implement))]
+#[proc_macro_derive(IdealGas, attributes(implement))]
 pub fn derive_ideal_gas(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     expand_ideal_gas(input)
@@ -53,7 +53,7 @@ pub fn derive_ideal_gas(input: TokenStream) -> TokenStream {
         .into()
 }
 
-#[proc_macro_derive(ResidualModel, attributes(implement))]
+#[proc_macro_derive(Residual, attributes(implement))]
 pub fn derive_residual(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     expand_residual(input)

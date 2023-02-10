@@ -137,7 +137,7 @@ impl fmt::Display for JobackDeBroglie {
 }
 
 impl<D: DualNum<f64>> DeBroglieWavelengthDual<D> for JobackDeBroglie {
-    fn evaluate(&self, temperature: D) -> Array1<D> {
+    fn de_broglie_wavelength(&self, temperature: D) -> Array1<D> {
         let t = temperature;
         let t2 = t * t;
         let f = (temperature * KB / (P0 * A3)).ln();

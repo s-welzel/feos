@@ -24,20 +24,20 @@ pub trait MolarWeight {
 }
 
 #[derive(Clone)]
-pub struct EquationOfState<I, R> {
+pub struct Model<I, R> {
     pub ideal_gas: Arc<I>,
     pub residual: Arc<R>,
     components: usize,
 }
 
-impl<R: Residual> EquationOfState<DefaultIdealGas, R> {
+impl<R: Residual> Model<DefaultIdealGas, R> {
     pub fn new_default_ideal_gas(residual: Arc<R>) -> Self {
         let components = residual.components();
         Self::new(Arc::new(DefaultIdealGas::new(components)), residual)
     }
 }
 
-impl<I: IdealGas, R: Residual> EquationOfState<I, R> {
+impl<I: IdealGas, R: Residual> Model<I, R> {
     pub fn new(ideal_gas: Arc<I>, residual: Arc<R>) -> Self {
         assert_eq!(residual.components(), ideal_gas.components());
         let components = residual.components();
@@ -174,7 +174,7 @@ impl<I: IdealGas, R: Residual> EquationOfState<I, R> {
     }
 }
 
-impl<I: IdealGas, R: Residual + MolarWeight> EquationOfState<I, R> {
+impl<I: IdealGas, R: Residual + MolarWeight> Model<I, R> {
     pub fn molar_weight(&self) -> Array1<f64> {
         self.residual.molar_weight().to_reduced(MOL).unwrap()
     }

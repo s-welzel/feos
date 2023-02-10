@@ -1,5 +1,5 @@
 use super::{PhaseEquilibrium, SolverOptions, Verbosity};
-use crate::equation_of_state::{EquationOfState, IdealGas, Residual};
+use crate::equation_of_state::{Model, IdealGas, Residual};
 use crate::errors::{EosError, EosResult};
 use crate::state::{Contributions, DensityInitialization, State};
 use ndarray::*;
@@ -18,7 +18,7 @@ impl<I: IdealGas, R: Residual> PhaseEquilibrium<I, R, 2> {
     /// The algorithm can be use to calculate phase equilibria of systems
     /// containing non-volatile components (e.g. ions).
     pub fn tp_flash(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature: SINumber,
         pressure: SINumber,
         feed: &SIArray1,

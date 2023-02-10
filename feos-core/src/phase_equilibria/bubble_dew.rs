@@ -1,5 +1,5 @@
 use super::{PhaseEquilibrium, SolverOptions, Verbosity};
-use crate::equation_of_state::{EquationOfState, Residual};
+use crate::equation_of_state::{Model, Residual};
 use crate::errors::{EosError, EosResult};
 use crate::state::{
     Contributions,
@@ -59,7 +59,7 @@ impl<I: IdealGas, R: Residual> PhaseEquilibrium<I, R, 2> {
     /// Calculate a phase equilibrium for a given temperature
     /// or pressure and composition of the liquid phase.
     pub fn bubble_point(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature_or_pressure: SINumber,
         liquid_molefracs: &Array1<f64>,
         tp_init: Option<SINumber>,
@@ -83,7 +83,7 @@ impl<I: IdealGas, R: Residual> PhaseEquilibrium<I, R, 2> {
     /// Calculate a phase equilibrium for a given temperature
     /// or pressure and composition of the vapor phase.
     pub fn dew_point(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature_or_pressure: SINumber,
         vapor_molefracs: &Array1<f64>,
         tp_init: Option<SINumber>,
@@ -105,7 +105,7 @@ impl<I: IdealGas, R: Residual> PhaseEquilibrium<I, R, 2> {
     }
 
     pub(super) fn bubble_dew_point(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         tp_spec: TPSpec,
         tp_init: Option<SINumber>,
         molefracs_spec: &Array1<f64>,
@@ -181,7 +181,7 @@ impl<I: IdealGas, R: Residual> PhaseEquilibrium<I, R, 2> {
     }
 
     fn iterate_bubble_dew(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         tp_spec: TPSpec,
         tp_init: SINumber,
         molefracs_spec: &Array1<f64>,
@@ -202,7 +202,7 @@ impl<I: IdealGas, R: Residual> PhaseEquilibrium<I, R, 2> {
     }
 
     fn starting_pressure_ideal_gas(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature: SINumber,
         molefracs_spec: &Array1<f64>,
         bubble: bool,
@@ -218,7 +218,7 @@ impl<I: IdealGas, R: Residual> PhaseEquilibrium<I, R, 2> {
     }
 
     pub(super) fn starting_pressure_ideal_gas_bubble(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature: SINumber,
         liquid_molefracs: &Array1<f64>,
     ) -> EosResult<(SINumber, Array1<f64>)> {
@@ -237,7 +237,7 @@ impl<I: IdealGas, R: Residual> PhaseEquilibrium<I, R, 2> {
     }
 
     fn starting_pressure_ideal_gas_dew(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature: SINumber,
         vapor_molefracs: &Array1<f64>,
     ) -> EosResult<(SINumber, Array1<f64>)>
@@ -272,7 +272,7 @@ impl<I: IdealGas, R: Residual> PhaseEquilibrium<I, R, 2> {
     }
 
     pub(super) fn starting_pressure_spinodal(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature: SINumber,
         molefracs: &Array1<f64>,
     ) -> EosResult<SINumber>
@@ -288,7 +288,7 @@ impl<I: IdealGas, R: Residual> PhaseEquilibrium<I, R, 2> {
 }
 
 fn starting_x2_bubble<I: IdealGas, R: Residual>(
-    eos: &Arc<EquationOfState<I, R>>,
+    eos: &Arc<Model<I, R>>,
     temperature: SINumber,
     pressure: SINumber,
     liquid_molefracs: &Array1<f64>,
@@ -316,7 +316,7 @@ fn starting_x2_bubble<I: IdealGas, R: Residual>(
 }
 
 fn starting_x2_dew<I: IdealGas, R: Residual>(
-    eos: &Arc<EquationOfState<I, R>>,
+    eos: &Arc<Model<I, R>>,
     temperature: SINumber,
     pressure: SINumber,
     vapor_molefracs: &Array1<f64>,

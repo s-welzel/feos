@@ -3,7 +3,7 @@ use crate::functional_contribution::*;
 use crate::ideal_chain_contribution::IdealChainContribution;
 use crate::weight_functions::{WeightFunction, WeightFunctionInfo, WeightFunctionShape};
 use feos_core::{
-    Contributions, EosResult, EosUnit, EquationOfState, HelmholtzEnergy, HelmholtzEnergyDual,
+    Contributions, EosResult, EosUnit, Model, HelmholtzEnergy, HelmholtzEnergyDual,
     IdealGasContribution, IdealGasContributionDual, MolarWeight, StateHD,
 };
 use ndarray::*;
@@ -63,7 +63,7 @@ impl fmt::Display for DefaultIdealGasContribution {
     }
 }
 
-impl<T: HelmholtzEnergyFunctional> EquationOfState for DFT<T> {
+impl<T: HelmholtzEnergyFunctional> Model for DFT<T> {
     fn components(&self) -> usize {
         self.component_index()[self.component_index().len() - 1] + 1
     }

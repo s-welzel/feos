@@ -312,7 +312,7 @@ mod tests {
     };
     use approx::assert_relative_eq;
     use feos_core::{
-        Contributions, DensityInitialization, EquationOfState, HelmholtzEnergyDual,
+        Contributions, DensityInitialization, Model, HelmholtzEnergyDual,
         PhaseEquilibrium, State, StateHD,
     };
     use ndarray::arr1;
@@ -321,7 +321,7 @@ mod tests {
     #[test]
     fn ideal_gas_pressure() {
         let pets = Arc::new(ResidualModel::Pets(Pets::new(argon_parameters())));
-        let e = Arc::new(EquationOfState::new_default_ideal_gas(pets));
+        let e = Arc::new(Model::new_default_ideal_gas(pets));
         let t = 200.0 * KELVIN;
         let v = 1e-3 * METER.powi(3);
         let n = arr1(&[1.0]) * MOL;
@@ -338,7 +338,7 @@ mod tests {
     #[test]
     fn ideal_gas_heat_capacity_joback() {
         let pets = Arc::new(ResidualModel::Pets(Pets::new(argon_parameters())));
-        let e = Arc::new(EquationOfState::new_default_ideal_gas(pets));
+        let e = Arc::new(Model::new_default_ideal_gas(pets));
         let t = 200.0 * KELVIN;
         let v = 1e-3 * METER.powi(3);
         let n = arr1(&[1.0]) * MOL;
@@ -374,7 +374,7 @@ mod tests {
     #[test]
     fn new_tpn() {
         let pets = Arc::new(ResidualModel::Pets(Pets::new(argon_parameters())));
-        let e = Arc::new(EquationOfState::new_default_ideal_gas(pets));
+        let e = Arc::new(Model::new_default_ideal_gas(pets));
         let t = 300.0 * KELVIN;
         let p = BAR;
         let m = arr1(&[1.0]) * MOL;
@@ -390,7 +390,7 @@ mod tests {
     #[test]
     fn vle_pure_t() {
         let pets = Arc::new(ResidualModel::Pets(Pets::new(argon_parameters())));
-        let e = Arc::new(EquationOfState::new_default_ideal_gas(pets));
+        let e = Arc::new(Model::new_default_ideal_gas(pets));
         let t = 300.0 * KELVIN;
         let vle = PhaseEquilibrium::pure(&e, t, None, Default::default());
         if let Ok(v) = vle {
@@ -429,11 +429,11 @@ mod tests {
     #[test]
     fn mix_single() {
         let pets1 = Arc::new(ResidualModel::Pets(Pets::new(argon_parameters())));
-        let e1 = Arc::new(EquationOfState::new_default_ideal_gas(pets1));
+        let e1 = Arc::new(Model::new_default_ideal_gas(pets1));
         let pets2 = Arc::new(ResidualModel::Pets(Pets::new(krypton_parameters())));
-        let e2 = Arc::new(EquationOfState::new_default_ideal_gas(pets2));
+        let e2 = Arc::new(Model::new_default_ideal_gas(pets2));
         let pets12 = Arc::new(ResidualModel::Pets(Pets::new(argon_krypton_parameters())));
-        let e12 = Arc::new(EquationOfState::new_default_ideal_gas(pets12));
+        let e12 = Arc::new(Model::new_default_ideal_gas(pets12));
 
         let t = 300.0 * KELVIN;
         let v = 0.02456883872966545 * METER.powi(3);

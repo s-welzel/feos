@@ -275,7 +275,7 @@ macro_rules! helmholtz_energy {
 macro_rules! de_broglie_wavelength {
     ($py_hd_id:ident, $hd_ty:ty) => {
         impl DeBroglieWavelengthDual<$hd_ty> for PyDeBroglieWavelength {
-            fn evaluate(&self, temperature: $hd_ty) -> Array1<$hd_ty> {
+            fn de_broglie_wavelength(&self, temperature: $hd_ty) -> Array1<$hd_ty> {
                 Python::with_gil(|py| {
                     let py_result = self
                         .0

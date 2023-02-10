@@ -1,5 +1,5 @@
 use super::{PhaseDiagram, PhaseEquilibrium, SolverOptions};
-use crate::equation_of_state::{EquationOfState, IdealGas, Residual};
+use crate::equation_of_state::{Model, IdealGas, Residual};
 use crate::errors::{EosError, EosResult};
 use crate::state::{Contributions, DensityInitialization, State, StateBuilder, TPSpec};
 use crate::EosUnit;
@@ -19,7 +19,7 @@ impl<I: IdealGas, R: Residual> PhaseDiagram<I, R, 2> {
     /// phases are known, they can be passed as `x_lle` to avoid
     /// the calculation of unstable branches.
     pub fn binary_vle(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature_or_pressure: SINumber,
         npoints: Option<usize>,
         x_lle: Option<(f64, f64)>,
@@ -96,7 +96,7 @@ impl<I: IdealGas, R: Residual> PhaseDiagram<I, R, 2> {
 
     #[allow(clippy::type_complexity)]
     fn calculate_vlle(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         tp: TPSpec,
         npoints: usize,
         x_lle: (f64, f64),
@@ -138,7 +138,7 @@ impl<I: IdealGas, R: Residual> PhaseDiagram<I, R, 2> {
     /// liquid diagrams as well, as long as the feed composition is
     /// in a two phase region.
     pub fn lle(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature_or_pressure: SINumber,
         feed: &SIArray1,
         min_tp: SINumber,
@@ -172,7 +172,7 @@ impl<I: IdealGas, R: Residual> PhaseDiagram<I, R, 2> {
 }
 
 fn iterate_vle<I: IdealGas, R: Residual>(
-    eos: &Arc<EquationOfState<I, R>>,
+    eos: &Arc<Model<I, R>>,
     tp: TPSpec,
     x_lim: &[f64],
     vle_0: PhaseEquilibrium<I, R, 2>,
@@ -254,7 +254,7 @@ impl<I: IdealGas, R: Residual> PhaseDiagram<I, R, 2> {
     /// The `x_lle` parameter is used as initial values for the calculation
     /// of the heteroazeotrope.
     pub fn binary_vlle(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature_or_pressure: SINumber,
         x_lle: (f64, f64),
         tp_lim_lle: Option<SINumber>,
@@ -353,7 +353,7 @@ where
     /// Calculate a heteroazeotrope (three phase equilbrium) for a binary
     /// system and given pressure.
     pub fn heteroazeotrope(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature_or_pressure: SINumber,
         x_init: (f64, f64),
         tp_init: Option<SINumber>,
@@ -373,7 +373,7 @@ where
     /// Calculate a heteroazeotrope (three phase equilbrium) for a binary
     /// system and given temperature.
     fn heteroazeotrope_t(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature: SINumber,
         x_init: (f64, f64),
         p_init: Option<SINumber>,
@@ -525,7 +525,7 @@ where
     /// Calculate a heteroazeotrope (three phase equilbrium) for a binary
     /// system and given pressure.
     fn heteroazeotrope_p(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         pressure: SINumber,
         x_init: (f64, f64),
         t_init: Option<SINumber>,

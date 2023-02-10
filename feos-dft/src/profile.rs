@@ -3,7 +3,7 @@ use crate::functional::{HelmholtzEnergyFunctional, DFT};
 use crate::geometry::Grid;
 use crate::solver::{DFTSolver, DFTSolverLog};
 use crate::weight_functions::WeightFunctionInfo;
-use feos_core::{Contributions, EosError, EosResult, EosUnit, EquationOfState, State};
+use feos_core::{Contributions, EosError, EosResult, EosUnit, Model, State};
 use ndarray::{
     Array, Array1, ArrayBase, Axis as Axis_nd, Data, Dimension, Ix1, Ix2, Ix3, RemoveAxis,
 };

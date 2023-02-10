@@ -7,7 +7,7 @@
 //!
 //! Internally, all properties are computed using such states as input.
 use crate::density_iteration::density_iteration;
-use crate::equation_of_state::{EquationOfState, IdealGas, Residual};
+use crate::equation_of_state::{Model, IdealGas, Residual};
 use crate::errors::{EosError, EosResult};
 use crate::EosUnit;
 use cache::Cache;
@@ -121,7 +121,7 @@ impl<D: DualNum<f64>> StateHD<D> {
 /// + [Flash calculations](#flash-calculations)
 pub struct State<I: IdealGas, R: Residual> {
     /// Equation of state
-    pub eos: Arc<EquationOfState<I, R>>,
+    pub eos: Arc<Model<I, R>>,
     /// Temperature $T$
     pub temperature: SINumber,
     /// Volume $V$
@@ -222,7 +222,7 @@ impl<I: IdealGas, R: Residual> State<I, R> {
     /// and if values are finite. It will **not** validate physics, i.e. if the resulting
     /// densities are below the maximum packing fraction.
     pub fn new_nvt(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature: SINumber,
         volume: SINumber,
         moles: &SIArray1,
@@ -234,7 +234,7 @@ impl<I: IdealGas, R: Residual> State<I, R> {
     }
 
     pub(super) fn new_nvt_unchecked(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature: SINumber,
         volume: SINumber,
         moles: &SIArray1,
@@ -273,7 +273,7 @@ impl<I: IdealGas, R: Residual> State<I, R> {
     /// and if values are finite. It will **not** validate physics, i.e. if the resulting
     /// densities are below the maximum packing fraction.
     pub fn new_pure(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature: SINumber,
         density: SINumber,
     ) -> EosResult<Self> {
@@ -301,7 +301,7 @@ impl<I: IdealGas, R: Residual> State<I, R> {
     ///
     /// When the state cannot be created using the combination of inputs.
     pub fn new(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature: Option<SINumber>,
         volume: Option<SINumber>,
         density: Option<SINumber>,
@@ -433,7 +433,7 @@ impl<I: IdealGas, R: Residual> State<I, R> {
     /// Return a new `State` using a density iteration. [DensityInitialization] is used to
     /// influence the calculation with respect to the possible solutions.
     pub fn new_npt(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature: SINumber,
         pressure: SINumber,
         moles: &SIArray1,
@@ -500,7 +500,7 @@ impl<I: IdealGas, R: Residual> State<I, R> {
 
     /// Return a new `State` for given pressure $p$, volume $V$, temperature $T$ and composition $x_i$.
     pub fn new_npvx(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature: SINumber,
         pressure: SINumber,
         volume: SINumber,
@@ -515,7 +515,7 @@ impl<I: IdealGas, R: Residual> State<I, R> {
 
     /// Return a new `State` for given pressure $p$ and molar enthalpy $h$.
     pub fn new_nph(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         pressure: SINumber,
         molar_enthalpy: SINumber,
         moles: &SIArray1,
@@ -536,7 +536,7 @@ impl<I: IdealGas, R: Residual> State<I, R> {
 
     /// Return a new `State` for given temperature $T$ and molar enthalpy $h$.
     pub fn new_nth(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature: SINumber,
         molar_enthalpy: SINumber,
         moles: &SIArray1,
@@ -563,7 +563,7 @@ impl<I: IdealGas, R: Residual> State<I, R> {
 
     /// Return a new `State` for given temperature $T$ and molar entropy $s$.
     pub fn new_nts(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperature: SINumber,
         molar_entropy: SINumber,
         moles: &SIArray1,
@@ -587,7 +587,7 @@ impl<I: IdealGas, R: Residual> State<I, R> {
 
     /// Return a new `State` for given pressure $p$ and molar entropy $s$.
     pub fn new_nps(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         pressure: SINumber,
         molar_entropy: SINumber,
         moles: &SIArray1,
@@ -608,7 +608,7 @@ impl<I: IdealGas, R: Residual> State<I, R> {
 
     /// Return a new `State` for given volume $V$ and molar internal energy $u$.
     pub fn new_nvu(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         volume: SINumber,
         molar_internal_energy: SINumber,
         moles: &SIArray1,

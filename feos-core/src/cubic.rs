@@ -243,7 +243,7 @@ impl MolarWeight for PengRobinson {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::equation_of_state::{DefaultIdealGas, EquationOfState};
+    use crate::equation_of_state::{DefaultIdealGas, Model};
     use crate::phase_equilibria::SolverOptions;
     use crate::state::State;
     use crate::Contributions;
@@ -299,7 +299,7 @@ mod tests {
         let parameters = PengRobinsonParameters::from_records(vec![propane], Array2::zeros((1, 1)));
         let residual = Arc::new(PengRobinson::new(Arc::new(parameters)));
         let ideal_gas = Arc::new(DefaultIdealGas::new(1));
-        let eos = Arc::new(EquationOfState::new(ideal_gas, residual));
+        let eos = Arc::new(Model::new(ideal_gas, residual));
 
         let options = SolverOptions::new().verbosity(Verbosity::Iter);
         let cp = State::critical_point(&eos, None, None, options)?;

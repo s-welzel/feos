@@ -1,5 +1,5 @@
 use super::{PhaseDiagram, PhaseEquilibrium, SolverOptions};
-use crate::equation_of_state::{EquationOfState, IdealGas, Residual};
+use crate::equation_of_state::{Model, IdealGas, Residual};
 use crate::errors::EosResult;
 use crate::state::State;
 use crate::Contributions;
@@ -9,7 +9,7 @@ use std::sync::Arc;
 impl<I: IdealGas, R: Residual> PhaseDiagram<I, R, 2> {
     /// Calculate the bubble point line of a mixture with given composition.
     pub fn bubble_point_line(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         moles: &SIArray1,
         min_temperature: SINumber,
         npoints: usize,
@@ -58,7 +58,7 @@ impl<I: IdealGas, R: Residual> PhaseDiagram<I, R, 2> {
 
     /// Calculate the dew point line of a mixture with given composition.
     pub fn dew_point_line(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         moles: &SIArray1,
         min_temperature: SINumber,
         npoints: usize,
@@ -123,7 +123,7 @@ impl<I: IdealGas, R: Residual> PhaseDiagram<I, R, 2> {
 
     /// Calculate the spinodal lines for a mixture with fixed composition.
     pub fn spinodal(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         moles: &SIArray1,
         min_temperature: SINumber,
         npoints: usize,

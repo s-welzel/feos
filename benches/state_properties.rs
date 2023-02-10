@@ -2,7 +2,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use feos::pcsaft::{PcSaft, PcSaftParameters};
 use feos_core::{
     parameter::{IdentifierOption, Parameter},
-    Contributions, EquationOfState, State,
+    Contributions, Model, State,
 };
 use ndarray::arr1;
 use quantity::si::*;
@@ -12,7 +12,7 @@ type S = State<PcSaft>;
 
 /// Evaluate a property of a state given the EoS, the property to compute,
 /// temperature, volume, moles, and the contributions to consider.
-fn property<E: EquationOfState, T, F: Fn(&State<E>, Contributions) -> T>(
+fn property<E: Model, T, F: Fn(&State<E>, Contributions) -> T>(
     (eos, property, t, v, n, contributions): (
         &Arc<E>,
         F,
@@ -28,7 +28,7 @@ fn property<E: EquationOfState, T, F: Fn(&State<E>, Contributions) -> T>(
 
 /// Evaluate a property with of a state given the EoS, the property to compute,
 /// temperature, volume, moles.
-fn property_no_contributions<E: EquationOfState, T, F: Fn(&State<E>) -> T>(
+fn property_no_contributions<E: Model, T, F: Fn(&State<E>) -> T>(
     (eos, property, t, v, n): (&Arc<E>, F, SINumber, SINumber, &SIArray1),
 ) -> T {
     let state = State::new_nvt(eos, t, v, n).unwrap();

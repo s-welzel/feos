@@ -31,7 +31,7 @@ pub trait IdealGas: Sync + Send + fmt::Display {
     where
         dyn DeBroglieWavelength: DeBroglieWavelengthDual<D>,
     {
-        let lambda = self.de_broglie_wavelength().evaluate(state.temperature);
+        let lambda = self.de_broglie_wavelength().de_broglie_wavelength(state.temperature);
         ((lambda
             + state.partial_density.mapv(|x| {
                 if x.re() == 0.0 {
@@ -49,7 +49,7 @@ pub trait IdealGas: Sync + Send + fmt::Display {
 pub struct DefaultDeBroglie(pub usize);
 
 impl<D: DualNum<f64>> DeBroglieWavelengthDual<D> for DefaultDeBroglie {
-    fn evaluate(&self, _: D) -> Array1<D> {
+    fn de_broglie_wavelength(&self, _: D) -> Array1<D> {
         Array1::zeros(self.0)
     }
 }

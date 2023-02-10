@@ -1,7 +1,7 @@
 use super::functional::{HelmholtzEnergyFunctional, DFT};
 use super::functional_contribution::FunctionalContribution;
 use super::weight_functions::WeightFunctionInfo;
-use feos_core::{Contributions, EosResult, EosUnit, EquationOfState, PhaseEquilibrium};
+use feos_core::{Contributions, EosResult, EosUnit, Model, PhaseEquilibrium};
 use ndarray::*;
 use num_dual::HyperDual64;
 // use quantity::{SIArray2, SINumber};

@@ -3,7 +3,7 @@ use std::fmt;
 use ndarray::Array1;
 
 pub trait DeBroglieWavelengthDual<D: DualNum<f64>> {
-    fn evaluate(&self, temperature: D) -> Array1<D>;
+    fn de_broglie_wavelength(&self, temperature: D) -> Array1<D>;
 }
 
 pub trait DeBroglieWavelength:

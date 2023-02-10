@@ -1,5 +1,5 @@
 use super::{PhaseEquilibrium, SolverOptions};
-use crate::equation_of_state::{EquationOfState, IdealGas, Residual};
+use crate::equation_of_state::{Model, IdealGas, Residual};
 use crate::errors::EosResult;
 use crate::state::{State, StateVec};
 #[cfg(feature = "rayon")]
@@ -36,7 +36,7 @@ impl<I: IdealGas, R: Residual, const N: usize> PhaseDiagram<I, R, N> {
 impl<I: IdealGas, R: Residual> PhaseDiagram<I, R, 2> {
     /// Calculate a phase diagram for a pure component.
     pub fn pure(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         min_temperature: SINumber,
         npoints: usize,
         critical_temperature: Option<SINumber>,
@@ -76,7 +76,7 @@ impl<I: IdealGas, R: Residual> PhaseDiagram<I, R, 2> {
 #[cfg(feature = "rayon")]
 impl<I: IdealGas, R: Residual> PhaseDiagram<I, R, 2> {
     fn solve_temperatures(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         temperatures: ArrayView1<f64>,
         options: SolverOptions,
     ) -> EosResult<Vec<PhaseEquilibrium<I, R, 2>>> {
@@ -98,7 +98,7 @@ impl<I: IdealGas, R: Residual> PhaseDiagram<I, R, 2> {
     }
 
     pub fn par_pure(
-        eos: &Arc<EquationOfState<I, R>>,
+        eos: &Arc<Model<I, R>>,
         min_temperature: SINumber,
         npoints: usize,
         chunksize: usize,

@@ -1,6 +1,6 @@
 use super::{DensityInitialization, State};
 use crate::equation_of_state::Residual;
-use crate::{equation_of_state::EquationOfState, IdealGas};
+use crate::{equation_of_state::Model, IdealGas};
 use crate::errors::EosResult;
 use ndarray::Array1;
 use quantity::si::{SIArray1, SINumber};
@@ -56,7 +56,7 @@ use std::sync::Arc;
 /// # }
 /// ```
 pub struct StateBuilder<'a, I: IdealGas, R: Residual> {
-    eos: Arc<EquationOfState<I, R>>,
+    eos: Arc<Model<I, R>>,
     temperature: Option<SINumber>,
     volume: Option<SINumber>,
     density: Option<SINumber>,
@@ -74,7 +74,7 @@ pub struct StateBuilder<'a, I: IdealGas, R: Residual> {
 
 impl<'a, I: IdealGas, R: Residual> StateBuilder<'a, I, R> {
     /// Create a new `StateBuilder` for the given equation of state.
-    pub fn new(eos: &Arc<EquationOfState<I, R>>) -> Self {
+    pub fn new(eos: &Arc<Model<I, R>>) -> Self {
         StateBuilder {
             eos: eos.clone(),
             temperature: None,

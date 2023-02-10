@@ -2,7 +2,7 @@
 use super::functional::{HelmholtzEnergyFunctional, DFT};
 use super::solver::DFTSolver;
 use feos_core::{
-    Contributions, DensityInitialization, EosError, EosResult, EosUnit, EquationOfState,
+    Contributions, DensityInitialization, EosError, EosResult, EosUnit, Model,
     SolverOptions, State, StateBuilder,
 };
 use ndarray::{Array1, Dimension, Ix1, Ix3, RemoveAxis};

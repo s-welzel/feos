@@ -1,4 +1,4 @@
-use crate::equation_of_state::{EquationOfState, IdealGas, Residual};
+use crate::equation_of_state::{Model, IdealGas, Residual};
 use crate::errors::{EosError, EosResult};
 use crate::state::State;
 use crate::EosUnit;
@@ -6,7 +6,7 @@ use quantity::si::{SIArray1, SINumber, SIUnit};
 use std::sync::Arc;
 
 pub fn density_iteration<I: IdealGas, R: Residual>(
-    eos: &Arc<EquationOfState<I, R>>,
+    eos: &Arc<Model<I, R>>,
     temperature: SINumber,
     pressure: SINumber,
     moles: &SIArray1,
@@ -145,7 +145,7 @@ pub fn density_iteration<I: IdealGas, R: Residual>(
 }
 
 fn pressure_spinodal<I: IdealGas, R: Residual>(
-    eos: &Arc<EquationOfState<I, R>>,
+    eos: &Arc<Model<I, R>>,
     temperature: SINumber,
     rho_init: SINumber,
     moles: &SIArray1,
